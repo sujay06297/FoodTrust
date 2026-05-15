@@ -6,6 +6,9 @@ namespace FoodTrust.Infrastructure.Data;
 
 public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory connectionFactory) : IRestaurantReviewRepository
 {
+    /// <summary>
+    /// 新增舊版單一分數評分，並同步寫入評論表。
+    /// </summary>
     public async Task<bool> AddRestaurantRatingAsync(long id, CreateRestaurantRatingCommand command)
     {
         await using var connection = connectionFactory.Create();
@@ -86,6 +89,9 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         return true;
     }
 
+    /// <summary>
+    /// 新增完整餐廳評論並計算平均分數。
+    /// </summary>
     public async Task<bool> AddRestaurantReviewAsync(long id, CreateRestaurantReviewCommand command)
     {
         await using var connection = connectionFactory.Create();
@@ -173,6 +179,9 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         return true;
     }
 
+    /// <summary>
+    /// 取得餐廳已核准的公開評論。
+    /// </summary>
     public async Task<IReadOnlyList<RestaurantReviewListItem>> GetRestaurantReviewsAsync(long id, int limit)
     {
         await using var connection = connectionFactory.Create();
@@ -213,16 +222,25 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         return rows.Select(ToReviewListItem).ToArray();
     }
 
+    /// <summary>
+    /// 修剪選填字串，並將空白值正規化為 null。
+    /// </summary>
     private static string? NormalizeOptional(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
+    /// <summary>
+    /// 將資料庫時間戳視為 UTC 時間。
+    /// </summary>
     private static DateTimeOffset ToUtcOffset(DateTime value)
     {
         return new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc));
     }
 
+    /// <summary>
+    /// 將資料庫資料列轉換為評論列表項目。
+    /// </summary>
     private static RestaurantReviewListItem ToReviewListItem(RestaurantReviewRow row)
     {
         return new RestaurantReviewListItem(

@@ -12,6 +12,9 @@ public sealed class RestaurantImportWorker(
     IOptions<RestaurantImportOptions> options,
     ILogger<RestaurantImportWorker> logger) : BackgroundService
 {
+    /// <summary>
+    /// 執行匯入排程直到主機停止。
+    /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (options.Value.RunOnStartup)
@@ -28,6 +31,9 @@ public sealed class RestaurantImportWorker(
         }
     }
 
+    /// <summary>
+    /// 在 scoped service provider 內執行一次餐廳匯入流程。
+    /// </summary>
     private async Task RunImportAsync(CancellationToken cancellationToken)
     {
         using var scope = scopeFactory.CreateScope();

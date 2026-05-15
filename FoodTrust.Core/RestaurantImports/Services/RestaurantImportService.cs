@@ -7,6 +7,9 @@ public sealed class RestaurantImportService(
     IRestaurantImportRunRepository importRunRepository,
     IRestaurantImportTargetRepository importTargetRepository) : IRestaurantImportService
 {
+    /// <summary>
+    /// 從設定的來源匯入餐廳，並記錄匯入執行結果。
+    /// </summary>
     public async Task ImportAsync(int batchSize, CancellationToken cancellationToken)
     {
         var runId = await importRunRepository.StartImportRunAsync(

@@ -5,6 +5,9 @@ namespace FoodTrust.Infrastructure.Data;
 
 public sealed class DatabaseInitializer(MySqlConnectionFactory connectionFactory)
 {
+    /// <summary>
+    /// 確保資料庫存在並套用尚未執行的 schema migration。
+    /// </summary>
     public async Task InitializeAsync()
     {
         await EnsureDatabaseAsync();
@@ -16,6 +19,9 @@ public sealed class DatabaseInitializer(MySqlConnectionFactory connectionFactory
         await ApplyPendingMigrationsAsync(connection);
     }
 
+    /// <summary>
+    /// 在 migration 追蹤表不存在時建立該資料表。
+    /// </summary>
     private static async Task EnsureMigrationTableAsync(MySqlConnection connection)
     {
         await connection.ExecuteAsync("""
@@ -28,6 +34,9 @@ public sealed class DatabaseInitializer(MySqlConnectionFactory connectionFactory
             """);
     }
 
+    /// <summary>
+    /// 套用尚未記錄在 migration 追蹤表中的 migration。
+    /// </summary>
     private static async Task ApplyPendingMigrationsAsync(MySqlConnection connection)
     {
         var appliedVersions = (await connection.QueryAsync<long>(
@@ -63,6 +72,9 @@ public sealed class DatabaseInitializer(MySqlConnectionFactory connectionFactory
         }
     }
 
+    /// <summary>
+    /// 在開啟應用程式資料庫連線前建立設定指定的資料庫。
+    /// </summary>
     private async Task EnsureDatabaseAsync()
     {
         var connectionStringBuilder = new MySqlConnectionStringBuilder(
@@ -82,6 +94,9 @@ public sealed class DatabaseInitializer(MySqlConnectionFactory connectionFactory
             $"CREATE DATABASE IF NOT EXISTS `{EscapeIdentifier(database)}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
     }
 
+    /// <summary>
+    /// 逸出 MySQL 識別名稱以便用於反引號識別字。
+    /// </summary>
     private static string EscapeIdentifier(string identifier)
     {
         return identifier.Replace("`", "``", StringComparison.Ordinal);

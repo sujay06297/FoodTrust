@@ -5,6 +5,9 @@ namespace FoodTrust.Api.Filters;
 
 public sealed class ArgumentExceptionFilter : IExceptionFilter
 {
+    /// <summary>
+    /// 將參數驗證例外轉換成 HTTP 400 ProblemDetails 回應。
+    /// </summary>
     public void OnException(ExceptionContext context)
     {
         if (context.Exception is not ArgumentException exception)

@@ -11,6 +11,9 @@ namespace FoodTrust.Infrastructure;
 
 public static class DependencyInjection
 {
+    /// <summary>
+    /// 註冊基礎設施服務、資料存取實作與外部來源用戶端。
+    /// </summary>
     public static IServiceCollection AddFoodTrustInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)

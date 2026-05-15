@@ -9,6 +9,9 @@ namespace FoodTrust.Api.Controllers;
 [Route("api/v1/restaurants")]
 public sealed class RestaurantsController(IRestaurantService restaurantService) : ControllerBase
 {
+    /// <summary>
+    /// 建立餐廳資料。
+    /// </summary>
     [HttpPost]
     public async Task<ActionResult<RestaurantDetail>> Create([FromBody] CreateRestaurantRequest request)
     {
@@ -35,6 +38,9 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
         return CreatedAtAction(nameof(Get), new { id = restaurantId }, restaurant);
     }
 
+    /// <summary>
+    /// 使用篩選條件、分頁與支援的排序選項查詢餐廳。
+    /// </summary>
     [HttpGet]
     public async Task<ActionResult<RestaurantSearchResult>> Search(
         [FromQuery] string? keyword,
@@ -66,6 +72,9 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
         return Ok(result);
     }
 
+    /// <summary>
+    /// 依識別碼取得餐廳。
+    /// </summary>
     [HttpGet("{id:long}")]
     public async Task<ActionResult<RestaurantDetail>> Get(long id)
     {
@@ -73,6 +82,9 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
         return restaurant is null ? NotFound() : Ok(restaurant);
     }
 
+    /// <summary>
+    /// 更新餐廳資料。
+    /// </summary>
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateRestaurantRequest request)
     {
@@ -97,6 +109,9 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
         return updated ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// 更新餐廳狀態。
+    /// </summary>
     [HttpPatch("{id:long}/status")]
     public async Task<IActionResult> UpdateStatus(long id, [FromBody] UpdateRestaurantStatusRequest request)
     {

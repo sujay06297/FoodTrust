@@ -13,6 +13,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
     private const decimal BayesianMinimumReviewCount = 20m;
     private const decimal BayesianGlobalAverageScore = 3.6m;
 
+    /// <summary>
+    /// 寫入或更新匯入餐廳資料，並將來源資料連結到餐廳。
+    /// </summary>
     public async Task<RestaurantUpsertResult> UpsertRestaurantsAsync(IReadOnlyCollection<RestaurantImportRecord> records)
     {
         if (records.Count == 0)
@@ -146,6 +149,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         return new RestaurantUpsertResult(insertedCount, updatedCount, linkedExistingCount);
     }
 
+    /// <summary>
+    /// 建立餐廳基本資料並回傳產生的識別碼。
+    /// </summary>
     public async Task<long> CreateRestaurantAsync(CreateRestaurantCommand command)
     {
         await using var connection = connectionFactory.Create();
@@ -221,6 +227,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         return await connection.ExecuteScalarAsync<long>("SELECT LAST_INSERT_ID();");
     }
 
+    /// <summary>
+    /// 更新餐廳基本資料。
+    /// </summary>
     public async Task<bool> UpdateRestaurantAsync(long id, UpdateRestaurantCommand command)
     {
         await using var connection = connectionFactory.Create();
@@ -271,6 +280,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         return affectedRows > 0;
     }
 
+    /// <summary>
+    /// 更新餐廳狀態。
+    /// </summary>
     public async Task<bool> UpdateRestaurantStatusAsync(long id, string status)
     {
         await using var connection = connectionFactory.Create();
@@ -291,6 +303,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         return affectedRows > 0;
     }
 
+    /// <summary>
+    /// 使用篩選條件、分數摘要與支援的排序查詢餐廳。
+    /// </summary>
     public async Task<RestaurantSearchResult> SearchRestaurantsAsync(RestaurantSearchRequest request)
     {
         await using var connection = connectionFactory.Create();
@@ -436,6 +451,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         return new RestaurantSearchResult(items, page, pageSize, totalCount);
     }
 
+    /// <summary>
+    /// 取得餐廳詳細資料與來源中繼資料。
+    /// </summary>
     public async Task<RestaurantDetail?> GetRestaurantAsync(long id)
     {
         await using var connection = connectionFactory.Create();
@@ -522,11 +540,17 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
                 .ToArray());
     }
 
+    /// <summary>
+    /// 將資料庫時間戳視為 UTC 時間。
+    /// </summary>
     private static DateTimeOffset ToUtcOffset(DateTime value)
     {
         return new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc));
     }
 
+    /// <summary>
+    /// 修剪選填字串，並將空白值正規化為 null。
+    /// </summary>
     private static string? NormalizeOptional(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -566,6 +590,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         DateTime CreatedAt,
         DateTime UpdatedAt);
 
+    /// <summary>
+    /// 將支援的搜尋排序選項對應為安全的 SQL ORDER BY 子句。
+    /// </summary>
     private static string GetSearchOrderBy(string sortBy)
     {
         return sortBy switch

@@ -5,6 +5,9 @@ namespace FoodTrust.Core.Restaurants.Services;
 
 public sealed class RestaurantReviewService(IRestaurantReviewRepository repository) : IRestaurantReviewService
 {
+    /// <summary>
+    /// 驗證並新增舊版單一分數評分。
+    /// </summary>
     public Task<bool> AddRestaurantRatingAsync(long id, CreateRestaurantRatingCommand command)
     {
         if (command.Score is < 1 or > 5)
@@ -15,6 +18,9 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
         return repository.AddRestaurantRatingAsync(id, command);
     }
 
+    /// <summary>
+    /// 驗證並新增完整餐廳評論。
+    /// </summary>
     public Task<bool> AddRestaurantReviewAsync(long id, CreateRestaurantReviewCommand command)
     {
         ValidateScore(command.TasteScore, nameof(command.TasteScore));
@@ -36,11 +42,17 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
         return repository.AddRestaurantReviewAsync(id, command);
     }
 
+    /// <summary>
+    /// 取得餐廳已核准的公開評論。
+    /// </summary>
     public Task<IReadOnlyList<RestaurantReviewListItem>> GetRestaurantReviewsAsync(long id, int limit)
     {
         return repository.GetRestaurantReviewsAsync(id, Math.Clamp(limit, 1, 100));
     }
 
+    /// <summary>
+    /// 驗證單一評分類別分數。
+    /// </summary>
     private static void ValidateScore(decimal score, string parameterName)
     {
         if (score is < 1m or > 5m)

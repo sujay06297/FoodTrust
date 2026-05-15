@@ -8,6 +8,9 @@ namespace FoodTrust.Api.Controllers;
 [Route("api/v1/restaurant-import-runs")]
 public sealed class RestaurantImportRunsController(IRestaurantImportRunService importRunService) : ControllerBase
 {
+    /// <summary>
+    /// 列出近期餐廳匯入紀錄。
+    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<RestaurantImportRunListItem>>> List([FromQuery] int? limit)
     {

@@ -9,6 +9,9 @@ namespace FoodTrust.Api.Controllers;
 [Route("api/v1/restaurants/{restaurantId:long}/reviews")]
 public sealed class RestaurantReviewsController(IRestaurantReviewService reviewService) : ControllerBase
 {
+    /// <summary>
+    /// 列出餐廳已核准的公開評論。
+    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<RestaurantReviewListItem>>> List(
         long restaurantId,
@@ -18,6 +21,9 @@ public sealed class RestaurantReviewsController(IRestaurantReviewService reviewS
         return Ok(reviews);
     }
 
+    /// <summary>
+    /// 建立包含分類分數的完整餐廳評論。
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create(long restaurantId, [FromBody] CreateRestaurantReviewRequest request)
     {

@@ -9,6 +9,9 @@ public sealed class DapperRestaurantRankingRepository(MySqlConnectionFactory con
     private const decimal BayesianMinimumReviewCount = 20m;
     private const decimal BayesianGlobalAverageScore = 3.6m;
 
+    /// <summary>
+    /// 依 Bayesian 平台分數與評論數取得餐廳排行。
+    /// </summary>
     public async Task<IReadOnlyList<RestaurantRankingItem>> GetRestaurantRankingsAsync(int limit)
     {
         await using var connection = connectionFactory.Create();

@@ -8,6 +8,9 @@ public sealed class MySqlConnectionFactory(IOptions<RestaurantImportOptions> opt
 {
     public string ConnectionString => options.Value.ConnectionString;
 
+    /// <summary>
+    /// 使用設定的連線字串建立新的 MySQL 連線。
+    /// </summary>
     public MySqlConnection Create()
     {
         return new MySqlConnection(ConnectionString);

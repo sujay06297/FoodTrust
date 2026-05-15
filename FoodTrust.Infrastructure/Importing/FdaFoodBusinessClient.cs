@@ -19,6 +19,9 @@ public sealed class FdaFoodBusinessClient(
 
     public string SourceUrl => options.Value.SourceUrl;
 
+    /// <summary>
+    /// 從台灣 FDA 食品業者資料來源下載並解析候選餐廳資料。
+    /// </summary>
     public async Task<IReadOnlyList<RestaurantImportRecord>> FetchRestaurantsAsync(CancellationToken cancellationToken)
     {
         using var response = await httpClient.GetAsync(options.Value.SourceUrl, cancellationToken);
@@ -33,6 +36,9 @@ public sealed class FdaFoodBusinessClient(
         return records;
     }
 
+    /// <summary>
+    /// 解碼下載內容，包含 ZIP 壓縮資料。
+    /// </summary>
     private static async Task<string> DecodeContentAsync(byte[] content, CancellationToken cancellationToken)
     {
         if (content.Length >= 4 && content[0] == 0x50 && content[1] == 0x4B)
@@ -50,6 +56,9 @@ public sealed class FdaFoodBusinessClient(
         return Encoding.UTF8.GetString(content);
     }
 
+    /// <summary>
+    /// 判斷來源格式並解析 JSON 或 CSV 內容。
+    /// </summary>
     private static IReadOnlyList<RestaurantImportRecord> ParseContent(string content)
     {
         var trimmed = content.TrimStart('\uFEFF', ' ', '\t', '\r', '\n');
@@ -58,6 +67,9 @@ public sealed class FdaFoodBusinessClient(
             : ParseCsv(trimmed);
     }
 
+    /// <summary>
+    /// 將 FDA JSON 陣列內容解析為匯入資料。
+    /// </summary>
     private static IReadOnlyList<RestaurantImportRecord> ParseJson(string json)
     {
         using var document = JsonDocument.Parse(json);
@@ -82,6 +94,9 @@ public sealed class FdaFoodBusinessClient(
         return records;
     }
 
+    /// <summary>
+    /// 將 FDA CSV 內容解析為匯入資料。
+    /// </summary>
     private static IReadOnlyList<RestaurantImportRecord> ParseCsv(string csv)
     {
         using var reader = new StringReader(csv);
@@ -124,6 +139,9 @@ public sealed class FdaFoodBusinessClient(
         return records;
     }
 
+    /// <summary>
+    /// 當資料列符合餐飲業者條件時，加入正規化後的匯入資料。
+    /// </summary>
     private static void AddRecord(
         ICollection<RestaurantImportRecord> records,
         string? name,
@@ -156,6 +174,9 @@ public sealed class FdaFoodBusinessClient(
             rawPayload));
     }
 
+    /// <summary>
+    /// 從 JSON 元素取得第一個符合的字串屬性。
+    /// </summary>
     private static string? GetString(JsonElement element, params string[] propertyNames)
     {
         foreach (var propertyName in propertyNames)
@@ -171,6 +192,9 @@ public sealed class FdaFoodBusinessClient(
         return null;
     }
 
+    /// <summary>
+    /// 從 CSV 資料列字典取得第一個符合的字串值。
+    /// </summary>
     private static string? GetString(IReadOnlyDictionary<string, string?> row, params string[] propertyNames)
     {
         foreach (var propertyName in propertyNames)
@@ -184,6 +208,9 @@ public sealed class FdaFoodBusinessClient(
         return null;
     }
 
+    /// <summary>
+    /// 解析單行 CSV，並支援引號包住的欄位值。
+    /// </summary>
     private static List<string> ParseCsvLine(string line)
     {
         var values = new List<string>();
@@ -220,11 +247,17 @@ public sealed class FdaFoodBusinessClient(
         return values;
     }
 
+    /// <summary>
+    /// 正規化 CSV 標題名稱以便字典查找。
+    /// </summary>
     private static string NormalizeHeader(string value)
     {
         return value.Trim().TrimStart('\uFEFF');
     }
 
+    /// <summary>
+    /// 判斷資料列是否看起來代表餐廳或餐飲業者。
+    /// </summary>
     private static bool IsRestaurantBusiness(string? businessItem, string name)
     {
         if (!string.IsNullOrWhiteSpace(businessItem) &&
@@ -236,11 +269,17 @@ public sealed class FdaFoodBusinessClient(
         return Field.RestaurantKeywords.Any(keyword => name.Contains(keyword, StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// 合併來源值中的重複空白字元。
+    /// </summary>
     private static string NormalizeWhitespace(string value)
     {
         return string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
+    /// <summary>
+    /// 當外部資料缺少登錄字號時，建立穩定的來源鍵。
+    /// </summary>
     private static string BuildStableKey(string name, string address)
     {
         var normalized = $"{NormalizeWhitespace(name)}|{NormalizeWhitespace(address)}";

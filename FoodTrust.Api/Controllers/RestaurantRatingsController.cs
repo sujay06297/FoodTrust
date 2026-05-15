@@ -9,6 +9,9 @@ namespace FoodTrust.Api.Controllers;
 [Route("api/v1/restaurants/{restaurantId:long}/ratings")]
 public sealed class RestaurantRatingsController(IRestaurantReviewService reviewService) : ControllerBase
 {
+    /// <summary>
+    /// 為餐廳建立舊版單一分數評分。
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> Create(long restaurantId, [FromBody] CreateRestaurantRatingRequest request)
     {

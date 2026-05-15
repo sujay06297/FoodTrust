@@ -6,6 +6,9 @@ namespace FoodTrust.Infrastructure.Data;
 
 public sealed class DapperRestaurantImportRunRepository(MySqlConnectionFactory connectionFactory) : IRestaurantImportRunRepository
 {
+    /// <summary>
+    /// 新增執行中的匯入紀錄並回傳識別碼。
+    /// </summary>
     public async Task<long> StartImportRunAsync(string sourceSystem, string sourceUrl, DateTimeOffset startedAt)
     {
         await using var connection = connectionFactory.Create();
@@ -24,6 +27,9 @@ public sealed class DapperRestaurantImportRunRepository(MySqlConnectionFactory c
         return await connection.ExecuteScalarAsync<long>("SELECT LAST_INSERT_ID();");
     }
 
+    /// <summary>
+    /// 以最終統計數字將匯入紀錄標記為成功。
+    /// </summary>
     public async Task CompleteImportRunAsync(
         long runId,
         int fetchedCount,
@@ -52,6 +58,9 @@ public sealed class DapperRestaurantImportRunRepository(MySqlConnectionFactory c
         });
     }
 
+    /// <summary>
+    /// 以錯誤訊息將匯入紀錄標記為失敗。
+    /// </summary>
     public async Task FailImportRunAsync(long runId, string errorMessage, DateTimeOffset finishedAt)
     {
         await using var connection = connectionFactory.Create();
@@ -71,6 +80,9 @@ public sealed class DapperRestaurantImportRunRepository(MySqlConnectionFactory c
         });
     }
 
+    /// <summary>
+    /// 以限制筆數列出近期匯入紀錄。
+    /// </summary>
     public async Task<IReadOnlyList<RestaurantImportRunListItem>> GetImportRunsAsync(int limit)
     {
         await using var connection = connectionFactory.Create();
@@ -96,6 +108,9 @@ public sealed class DapperRestaurantImportRunRepository(MySqlConnectionFactory c
         return rows.Select(ToImportRunListItem).ToArray();
     }
 
+    /// <summary>
+    /// 將資料庫資料列轉換為匯入紀錄列表項目。
+    /// </summary>
     private static RestaurantImportRunListItem ToImportRunListItem(RestaurantImportRunRow row)
     {
         return new RestaurantImportRunListItem(
@@ -111,6 +126,9 @@ public sealed class DapperRestaurantImportRunRepository(MySqlConnectionFactory c
             row.ErrorMessage);
     }
 
+    /// <summary>
+    /// 將資料庫時間戳視為 UTC 時間。
+    /// </summary>
     private static DateTimeOffset ToUtcOffset(DateTime value)
     {
         return new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc));
