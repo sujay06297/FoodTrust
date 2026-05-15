@@ -1,3 +1,6 @@
 <Solution>
+  <Project Path="FoodTrust.Api/FoodTrust.Api.csproj" />
+  <Project Path="FoodTrust.Core/FoodTrust.Core.csproj" />
+  <Project Path="FoodTrust.Infrastructure/FoodTrust.Infrastructure.csproj" />
   <Project Path="FoodTrust.Worker/FoodTrust.Worker.csproj" />
 </Solution>
