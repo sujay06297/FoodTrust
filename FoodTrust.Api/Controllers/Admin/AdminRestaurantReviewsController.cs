@@ -1,11 +1,14 @@
 using FoodTrust.Api.Models.Admin;
+using FoodTrust.Core.Admin.Models;
 using FoodTrust.Core.Restaurants.Interfaces;
 using FoodTrust.Core.Restaurants.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FoodTrust.Api.Controllers.Admin;
 
 [ApiController]
+[Authorize(Roles = AdminRole.Admin)]
 [Route("api/v1/admin/reviews")]
 public sealed class AdminRestaurantReviewsController(IRestaurantReviewService reviewService) : ControllerBase
 {

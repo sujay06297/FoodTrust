@@ -127,6 +127,23 @@ public static class DatabaseMigrations
             CREATE INDEX ix_restaurants_city_district ON restaurants (city, district);
             CREATE INDEX ix_restaurants_cuisine_type ON restaurants (cuisine_type);
             CREATE INDEX ix_restaurants_price ON restaurants (price_min, price_max);
+            """),
+        new DatabaseMigration(
+            202605150003,
+            "Add admin users",
+            """
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id BIGINT NOT NULL AUTO_INCREMENT,
+                username VARCHAR(100) NOT NULL,
+                password_hash VARCHAR(500) NOT NULL,
+                display_name VARCHAR(100) NOT NULL,
+                role VARCHAR(50) NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at DATETIME(6) NOT NULL,
+                updated_at DATETIME(6) NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ux_admin_users_username UNIQUE (username)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
             """)
     ];
 }

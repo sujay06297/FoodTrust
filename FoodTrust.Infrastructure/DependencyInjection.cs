@@ -1,9 +1,11 @@
+using FoodTrust.Core.Admin.Interfaces;
 using FoodTrust.Core.RestaurantImports.Interfaces;
 using FoodTrust.Core.RestaurantImports.Services;
 using FoodTrust.Core.Restaurants.Interfaces;
 using FoodTrust.Infrastructure.Data;
 using FoodTrust.Infrastructure.Importing;
 using FoodTrust.Infrastructure.Options;
+using FoodTrust.Infrastructure.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,6 +26,8 @@ public static class DependencyInjection
         services.AddHttpClient<FdaFoodBusinessClient>();
         services.AddSingleton<MySqlConnectionFactory>();
         services.AddSingleton<DatabaseInitializer>();
+        services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
+        services.AddScoped<IAdminUserRepository, DapperAdminUserRepository>();
         services.AddScoped<IRestaurantRepository, DapperRestaurantRepository>();
         services.AddScoped<IRestaurantImportTargetRepository, DapperRestaurantRepository>();
         services.AddScoped<IRestaurantReviewRepository, DapperRestaurantReviewRepository>();
