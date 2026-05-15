@@ -8,12 +8,14 @@ public sealed class RestaurantService(IRestaurantRepository repository) : IResta
     public Task<long> CreateRestaurantAsync(CreateRestaurantCommand command)
     {
         ValidateRestaurant(command.Name, command.Address);
+        ValidatePriceRange(command.PriceMin, command.PriceMax);
         return repository.CreateRestaurantAsync(command);
     }
 
     public Task<bool> UpdateRestaurantAsync(long id, UpdateRestaurantCommand command)
     {
         ValidateRestaurant(command.Name, command.Address);
+        ValidatePriceRange(command.PriceMin, command.PriceMax);
         return repository.UpdateRestaurantAsync(id, command);
     }
 
@@ -33,6 +35,8 @@ public sealed class RestaurantService(IRestaurantRepository repository) : IResta
         {
             throw new ArgumentException("Invalid restaurant status.", nameof(request.Status));
         }
+
+        ValidatePriceRange(request.PriceMin, request.PriceMax);
 
         var normalizedRequest = request with
         {
@@ -61,4 +65,16 @@ public sealed class RestaurantService(IRestaurantRepository repository) : IResta
         }
     }
 
+    private static void ValidatePriceRange(int? priceMin, int? priceMax)
+    {
+        if (priceMin is < 0 || priceMax is < 0)
+        {
+            throw new ArgumentException("Restaurant price cannot be negative.");
+        }
+
+        if (priceMin is not null && priceMax is not null && priceMin > priceMax)
+        {
+            throw new ArgumentException("Restaurant price minimum cannot be greater than price maximum.");
+        }
+    }
 }

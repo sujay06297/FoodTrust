@@ -104,6 +104,29 @@ public static class DatabaseMigrations
                 error_message TEXT NULL,
                 PRIMARY KEY (id)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+            """),
+        new DatabaseMigration(
+            202605150002,
+            "Add restaurant profile fields",
+            """
+            ALTER TABLE restaurants
+                ADD COLUMN branch_name VARCHAR(100) NULL AFTER name,
+                ADD COLUMN city VARCHAR(100) NULL AFTER phone_number,
+                ADD COLUMN district VARCHAR(100) NULL AFTER city,
+                ADD COLUMN latitude DECIMAL(10, 7) NULL AFTER district,
+                ADD COLUMN longitude DECIMAL(10, 7) NULL AFTER latitude,
+                ADD COLUMN opening_hours VARCHAR(1000) NULL AFTER longitude,
+                ADD COLUMN price_min INT NULL AFTER opening_hours,
+                ADD COLUMN price_max INT NULL AFTER price_min,
+                ADD COLUMN cuisine_type VARCHAR(100) NULL AFTER price_max,
+                ADD COLUMN tags VARCHAR(500) NULL AFTER cuisine_type,
+                ADD COLUMN description TEXT NULL AFTER tags,
+                ADD COLUMN official_url VARCHAR(500) NULL AFTER description,
+                ADD COLUMN google_map_url VARCHAR(500) NULL AFTER official_url;
+
+            CREATE INDEX ix_restaurants_city_district ON restaurants (city, district);
+            CREATE INDEX ix_restaurants_cuisine_type ON restaurants (cuisine_type);
+            CREATE INDEX ix_restaurants_price ON restaurants (price_min, price_max);
             """)
     ];
 }

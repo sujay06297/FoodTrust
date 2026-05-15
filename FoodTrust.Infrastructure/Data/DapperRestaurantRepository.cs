@@ -151,13 +151,66 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         var now = DateTimeOffset.UtcNow.UtcDateTime;
 
         await connection.ExecuteAsync("""
-            INSERT INTO restaurants (name, address, phone_number, status, created_at, updated_at)
-            VALUES (@Name, @Address, @PhoneNumber, @Status, @Now, @Now);
+            INSERT INTO restaurants (
+                name,
+                branch_name,
+                address,
+                phone_number,
+                city,
+                district,
+                latitude,
+                longitude,
+                opening_hours,
+                price_min,
+                price_max,
+                cuisine_type,
+                tags,
+                description,
+                official_url,
+                google_map_url,
+                status,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                @Name,
+                @BranchName,
+                @Address,
+                @PhoneNumber,
+                @City,
+                @District,
+                @Latitude,
+                @Longitude,
+                @OpeningHours,
+                @PriceMin,
+                @PriceMax,
+                @CuisineType,
+                @Tags,
+                @Description,
+                @OfficialUrl,
+                @GoogleMapUrl,
+                @Status,
+                @Now,
+                @Now
+            );
             """, new
         {
             Name = command.Name.Trim(),
+            BranchName = NormalizeOptional(command.BranchName),
             Address = command.Address.Trim(),
             PhoneNumber = NormalizeOptional(command.PhoneNumber),
+            City = NormalizeOptional(command.City),
+            District = NormalizeOptional(command.District),
+            command.Latitude,
+            command.Longitude,
+            OpeningHours = NormalizeOptional(command.OpeningHours),
+            command.PriceMin,
+            command.PriceMax,
+            CuisineType = NormalizeOptional(command.CuisineType),
+            Tags = NormalizeOptional(command.Tags),
+            Description = NormalizeOptional(command.Description),
+            OfficialUrl = NormalizeOptional(command.OfficialUrl),
+            GoogleMapUrl = NormalizeOptional(command.GoogleMapUrl),
             Status = RestaurantStatus.PendingReview,
             Now = now
         });
@@ -173,16 +226,42 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         var affectedRows = await connection.ExecuteAsync("""
             UPDATE restaurants
             SET name = @Name,
+                branch_name = @BranchName,
                 address = @Address,
                 phone_number = @PhoneNumber,
+                city = @City,
+                district = @District,
+                latitude = @Latitude,
+                longitude = @Longitude,
+                opening_hours = @OpeningHours,
+                price_min = @PriceMin,
+                price_max = @PriceMax,
+                cuisine_type = @CuisineType,
+                tags = @Tags,
+                description = @Description,
+                official_url = @OfficialUrl,
+                google_map_url = @GoogleMapUrl,
                 updated_at = @UpdatedAt
             WHERE id = @Id;
             """, new
         {
             Id = id,
             Name = command.Name.Trim(),
+            BranchName = NormalizeOptional(command.BranchName),
             Address = command.Address.Trim(),
             PhoneNumber = NormalizeOptional(command.PhoneNumber),
+            City = NormalizeOptional(command.City),
+            District = NormalizeOptional(command.District),
+            command.Latitude,
+            command.Longitude,
+            OpeningHours = NormalizeOptional(command.OpeningHours),
+            command.PriceMin,
+            command.PriceMax,
+            CuisineType = NormalizeOptional(command.CuisineType),
+            Tags = NormalizeOptional(command.Tags),
+            Description = NormalizeOptional(command.Description),
+            OfficialUrl = NormalizeOptional(command.OfficialUrl),
+            GoogleMapUrl = NormalizeOptional(command.GoogleMapUrl),
             UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
         });
 
@@ -223,11 +302,25 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         var status = string.IsNullOrWhiteSpace(request.Status)
             ? null
             : request.Status.Trim();
+        var city = string.IsNullOrWhiteSpace(request.City)
+            ? null
+            : request.City.Trim();
+        var district = string.IsNullOrWhiteSpace(request.District)
+            ? null
+            : request.District.Trim();
+        var cuisineType = string.IsNullOrWhiteSpace(request.CuisineType)
+            ? null
+            : request.CuisineType.Trim();
 
         var parameters = new
         {
             Keyword = keyword,
             Status = status,
+            City = city,
+            District = district,
+            CuisineType = cuisineType,
+            request.PriceMin,
+            request.PriceMax,
             PageSize = pageSize,
             Offset = offset
         };
@@ -235,22 +328,45 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         var totalCount = await connection.ExecuteScalarAsync<long>("""
             SELECT COUNT(*)
             FROM restaurants
-            WHERE (@Keyword IS NULL OR name LIKE @Keyword OR address LIKE @Keyword OR phone_number LIKE @Keyword)
-              AND (@Status IS NULL OR status = @Status);
+            WHERE (@Keyword IS NULL OR name LIKE @Keyword OR branch_name LIKE @Keyword OR address LIKE @Keyword OR phone_number LIKE @Keyword OR cuisine_type LIKE @Keyword OR tags LIKE @Keyword)
+              AND (@Status IS NULL OR status = @Status)
+              AND (@City IS NULL OR city = @City)
+              AND (@District IS NULL OR district = @District)
+              AND (@CuisineType IS NULL OR cuisine_type = @CuisineType)
+              AND (@PriceMin IS NULL OR price_max IS NULL OR price_max >= @PriceMin)
+              AND (@PriceMax IS NULL OR price_min IS NULL OR price_min <= @PriceMax);
             """, parameters);
 
         var restaurants = await connection.QueryAsync<RestaurantRow>("""
             SELECT
                 id,
                 name,
+                branch_name AS BranchName,
                 address,
                 phone_number AS PhoneNumber,
+                city,
+                district,
+                latitude,
+                longitude,
+                opening_hours AS OpeningHours,
+                price_min AS PriceMin,
+                price_max AS PriceMax,
+                cuisine_type AS CuisineType,
+                tags,
+                description,
+                official_url AS OfficialUrl,
+                google_map_url AS GoogleMapUrl,
                 status,
                 created_at AS CreatedAt,
                 updated_at AS UpdatedAt
             FROM restaurants
-            WHERE (@Keyword IS NULL OR name LIKE @Keyword OR address LIKE @Keyword OR phone_number LIKE @Keyword)
+            WHERE (@Keyword IS NULL OR name LIKE @Keyword OR branch_name LIKE @Keyword OR address LIKE @Keyword OR phone_number LIKE @Keyword OR cuisine_type LIKE @Keyword OR tags LIKE @Keyword)
               AND (@Status IS NULL OR status = @Status)
+              AND (@City IS NULL OR city = @City)
+              AND (@District IS NULL OR district = @District)
+              AND (@CuisineType IS NULL OR cuisine_type = @CuisineType)
+              AND (@PriceMin IS NULL OR price_max IS NULL OR price_max >= @PriceMin)
+              AND (@PriceMax IS NULL OR price_min IS NULL OR price_min <= @PriceMax)
             ORDER BY id DESC
             LIMIT @PageSize OFFSET @Offset;
             """, parameters);
@@ -259,8 +375,14 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
             .Select(row => new RestaurantListItem(
                 row.Id,
                 row.Name,
+                row.BranchName,
                 row.Address,
                 row.PhoneNumber,
+                row.City,
+                row.District,
+                row.PriceMin,
+                row.PriceMax,
+                row.CuisineType,
                 row.Status,
                 new DateTimeOffset(DateTime.SpecifyKind(row.CreatedAt, DateTimeKind.Utc)),
                 new DateTimeOffset(DateTime.SpecifyKind(row.UpdatedAt, DateTimeKind.Utc))))
@@ -278,8 +400,21 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
             SELECT
                 id,
                 name,
+                branch_name AS BranchName,
                 address,
                 phone_number AS PhoneNumber,
+                city,
+                district,
+                latitude,
+                longitude,
+                opening_hours AS OpeningHours,
+                price_min AS PriceMin,
+                price_max AS PriceMax,
+                cuisine_type AS CuisineType,
+                tags,
+                description,
+                official_url AS OfficialUrl,
+                google_map_url AS GoogleMapUrl,
                 status,
                 created_at AS CreatedAt,
                 updated_at AS UpdatedAt
@@ -309,8 +444,21 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         return new RestaurantDetail(
             restaurant.Id,
             restaurant.Name,
+            restaurant.BranchName,
             restaurant.Address,
             restaurant.PhoneNumber,
+            restaurant.City,
+            restaurant.District,
+            restaurant.Latitude,
+            restaurant.Longitude,
+            restaurant.OpeningHours,
+            restaurant.PriceMin,
+            restaurant.PriceMax,
+            restaurant.CuisineType,
+            restaurant.Tags,
+            restaurant.Description,
+            restaurant.OfficialUrl,
+            restaurant.GoogleMapUrl,
             restaurant.Status,
             ToUtcOffset(restaurant.CreatedAt),
             ToUtcOffset(restaurant.UpdatedAt),
@@ -339,8 +487,21 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
     private sealed record RestaurantRow(
         long Id,
         string Name,
+        string? BranchName,
         string Address,
         string? PhoneNumber,
+        string? City,
+        string? District,
+        decimal? Latitude,
+        decimal? Longitude,
+        string? OpeningHours,
+        int? PriceMin,
+        int? PriceMax,
+        string? CuisineType,
+        string? Tags,
+        string? Description,
+        string? OfficialUrl,
+        string? GoogleMapUrl,
         string Status,
         DateTime CreatedAt,
         DateTime UpdatedAt);

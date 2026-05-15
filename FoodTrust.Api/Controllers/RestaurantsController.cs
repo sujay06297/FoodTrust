@@ -12,7 +12,23 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
     [HttpPost]
     public async Task<ActionResult<RestaurantDetail>> Create([FromBody] CreateRestaurantRequest request)
     {
-        var command = new CreateRestaurantCommand(request.Name, request.Address, request.PhoneNumber);
+        var command = new CreateRestaurantCommand(
+            request.Name,
+            request.Address,
+            request.PhoneNumber,
+            request.BranchName,
+            request.City,
+            request.District,
+            request.Latitude,
+            request.Longitude,
+            request.OpeningHours,
+            request.PriceMin,
+            request.PriceMax,
+            request.CuisineType,
+            request.Tags,
+            request.Description,
+            request.OfficialUrl,
+            request.GoogleMapUrl);
         var restaurantId = await restaurantService.CreateRestaurantAsync(command);
         var restaurant = await restaurantService.GetRestaurantAsync(restaurantId);
 
@@ -23,12 +39,22 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
     public async Task<ActionResult<RestaurantSearchResult>> Search(
         [FromQuery] string? keyword,
         [FromQuery] string? status,
+        [FromQuery] string? city,
+        [FromQuery] string? district,
+        [FromQuery] string? cuisineType,
+        [FromQuery] int? priceMin,
+        [FromQuery] int? priceMax,
         [FromQuery] int? page,
         [FromQuery] int? pageSize)
     {
         var request = new RestaurantSearchRequest(
             keyword,
             status,
+            city,
+            district,
+            cuisineType,
+            priceMin,
+            priceMax,
             page ?? 1,
             pageSize ?? 20);
 
@@ -46,7 +72,23 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateRestaurantRequest request)
     {
-        var command = new UpdateRestaurantCommand(request.Name, request.Address, request.PhoneNumber);
+        var command = new UpdateRestaurantCommand(
+            request.Name,
+            request.Address,
+            request.PhoneNumber,
+            request.BranchName,
+            request.City,
+            request.District,
+            request.Latitude,
+            request.Longitude,
+            request.OpeningHours,
+            request.PriceMin,
+            request.PriceMax,
+            request.CuisineType,
+            request.Tags,
+            request.Description,
+            request.OfficialUrl,
+            request.GoogleMapUrl);
         var updated = await restaurantService.UpdateRestaurantAsync(id, command);
         return updated ? NoContent() : NotFound();
     }
