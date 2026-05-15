@@ -73,30 +73,38 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
     /// <summary>
     /// 驗證並更新評論審核狀態。
     /// </summary>
-    public Task<bool> UpdateReviewStatusAsync(long id, string status)
+    public Task<bool> UpdateReviewStatusAsync(long id, string status, long adminUserId, string? reason)
     {
         if (!RestaurantReviewStatus.IsValid(status))
         {
             throw new ArgumentException("Invalid restaurant review status.", nameof(status));
         }
 
-        return repository.UpdateReviewStatusAsync(id, status);
+        return repository.UpdateReviewStatusAsync(id, status, adminUserId, NormalizeReason(reason));
     }
 
     /// <summary>
     /// 更新評論可疑標記。
     /// </summary>
-    public Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious)
+    public Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious, long adminUserId, string? reason)
     {
-        return repository.UpdateReviewSuspiciousAsync(id, isSuspicious);
+        return repository.UpdateReviewSuspiciousAsync(id, isSuspicious, adminUserId, NormalizeReason(reason));
     }
 
     /// <summary>
     /// 更新評論刪除標記。
     /// </summary>
-    public Task<bool> UpdateReviewDeletedAsync(long id, bool isDeleted)
+    public Task<bool> UpdateReviewDeletedAsync(long id, bool isDeleted, long adminUserId, string? reason)
     {
-        return repository.UpdateReviewDeletedAsync(id, isDeleted);
+        return repository.UpdateReviewDeletedAsync(id, isDeleted, adminUserId, NormalizeReason(reason));
+    }
+
+    /// <summary>
+    /// 查詢指定評論的後台審核紀錄。
+    /// </summary>
+    public Task<IReadOnlyList<AdminReviewModerationLogListItem>> GetReviewModerationLogsAsync(long id, int limit)
+    {
+        return repository.GetReviewModerationLogsAsync(id, Math.Clamp(limit, 1, 100));
     }
 
     /// <summary>
@@ -108,5 +116,13 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
         {
             throw new ArgumentException("Restaurant review score must be between 1 and 5.", parameterName);
         }
+    }
+
+    /// <summary>
+    /// 修剪審核原因，並將空白值正規化為 null。
+    /// </summary>
+    private static string? NormalizeReason(string? reason)
+    {
+        return string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
     }
 }

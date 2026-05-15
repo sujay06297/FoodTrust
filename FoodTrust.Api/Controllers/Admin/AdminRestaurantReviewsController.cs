@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FoodTrust.Api.Models.Admin;
 using FoodTrust.Core.Admin.Models;
 using FoodTrust.Core.Restaurants.Interfaces;
@@ -40,7 +41,11 @@ public sealed class AdminRestaurantReviewsController(IRestaurantReviewService re
     [HttpPatch("{id:long}/status")]
     public async Task<IActionResult> UpdateStatus(long id, [FromBody] UpdateReviewStatusRequest request)
     {
-        var updated = await reviewService.UpdateReviewStatusAsync(id, request.Status);
+        var updated = await reviewService.UpdateReviewStatusAsync(
+            id,
+            request.Status,
+            GetCurrentAdminUserId(),
+            request.Reason);
         return updated ? NoContent() : NotFound();
     }
 
@@ -50,7 +55,11 @@ public sealed class AdminRestaurantReviewsController(IRestaurantReviewService re
     [HttpPatch("{id:long}/suspicious")]
     public async Task<IActionResult> UpdateSuspicious(long id, [FromBody] UpdateReviewSuspiciousRequest request)
     {
-        var updated = await reviewService.UpdateReviewSuspiciousAsync(id, request.IsSuspicious);
+        var updated = await reviewService.UpdateReviewSuspiciousAsync(
+            id,
+            request.IsSuspicious,
+            GetCurrentAdminUserId(),
+            request.Reason);
         return updated ? NoContent() : NotFound();
     }
 
@@ -60,7 +69,37 @@ public sealed class AdminRestaurantReviewsController(IRestaurantReviewService re
     [HttpPatch("{id:long}/deleted")]
     public async Task<IActionResult> UpdateDeleted(long id, [FromBody] UpdateReviewDeletedRequest request)
     {
-        var updated = await reviewService.UpdateReviewDeletedAsync(id, request.IsDeleted);
+        var updated = await reviewService.UpdateReviewDeletedAsync(
+            id,
+            request.IsDeleted,
+            GetCurrentAdminUserId(),
+            request.Reason);
         return updated ? NoContent() : NotFound();
+    }
+
+    /// <summary>
+    /// 查詢指定評論的後台審核紀錄。
+    /// </summary>
+    [HttpGet("{id:long}/moderation-logs")]
+    public async Task<ActionResult<IReadOnlyList<AdminReviewModerationLogListItem>>> GetModerationLogs(
+        long id,
+        [FromQuery] int? limit)
+    {
+        var logs = await reviewService.GetReviewModerationLogsAsync(id, limit ?? 50);
+        return Ok(logs);
+    }
+
+    /// <summary>
+    /// 取得目前登入管理員的使用者識別碼。
+    /// </summary>
+    private long GetCurrentAdminUserId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!long.TryParse(value, out var adminUserId))
+        {
+            throw new InvalidOperationException("Invalid admin user identifier.");
+        }
+
+        return adminUserId;
     }
 }

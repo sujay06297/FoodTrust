@@ -291,12 +291,19 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
     /// <summary>
     /// 更新評論審核狀態。
     /// </summary>
-    public async Task<bool> UpdateReviewStatusAsync(long id, string status)
+    public async Task<bool> UpdateReviewStatusAsync(long id, string status, long adminUserId, string? reason)
     {
         await using var connection = connectionFactory.Create();
         await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
 
-        var affectedRows = await connection.ExecuteAsync("""
+        var oldStatus = await GetReviewStatusForUpdateAsync(connection, transaction, id);
+        if (oldStatus is null)
+        {
+            return false;
+        }
+
+        await connection.ExecuteAsync("""
             UPDATE restaurant_reviews
             SET status = @Status,
                 updated_at = @UpdatedAt
@@ -306,59 +313,142 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             Id = id,
             Status = status,
             UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
-        });
+        }, transaction);
 
-        return affectedRows > 0;
+        await AddModerationLogAsync(
+            connection,
+            transaction,
+            id,
+            adminUserId,
+            ReviewModerationAction.UpdateStatus,
+            oldStatus,
+            status,
+            reason);
+        await transaction.CommitAsync();
+
+        return true;
     }
 
     /// <summary>
     /// 更新評論可疑標記。
     /// </summary>
-    public async Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious)
+    public async Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious, long adminUserId, string? reason)
     {
         await using var connection = connectionFactory.Create();
         await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
 
-        var affectedRows = await connection.ExecuteAsync("""
+        var oldStatus = await GetReviewStatusForUpdateAsync(connection, transaction, id);
+        if (oldStatus is null)
+        {
+            return false;
+        }
+
+        var newStatus = isSuspicious ? RestaurantReviewStatus.Suspicious : oldStatus;
+        await connection.ExecuteAsync("""
             UPDATE restaurant_reviews
             SET is_suspicious = @IsSuspicious,
-                status = CASE WHEN @IsSuspicious THEN @SuspiciousStatus ELSE status END,
+                status = @NewStatus,
                 updated_at = @UpdatedAt
             WHERE id = @Id;
             """, new
         {
             Id = id,
             IsSuspicious = isSuspicious,
-            SuspiciousStatus = RestaurantReviewStatus.Suspicious,
+            NewStatus = newStatus,
             UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
-        });
+        }, transaction);
 
-        return affectedRows > 0;
+        await AddModerationLogAsync(
+            connection,
+            transaction,
+            id,
+            adminUserId,
+            ReviewModerationAction.MarkSuspicious,
+            oldStatus,
+            newStatus,
+            reason);
+        await transaction.CommitAsync();
+
+        return true;
     }
 
     /// <summary>
     /// 更新評論刪除標記。
     /// </summary>
-    public async Task<bool> UpdateReviewDeletedAsync(long id, bool isDeleted)
+    public async Task<bool> UpdateReviewDeletedAsync(long id, bool isDeleted, long adminUserId, string? reason)
     {
         await using var connection = connectionFactory.Create();
         await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
 
-        var affectedRows = await connection.ExecuteAsync("""
+        var oldStatus = await GetReviewStatusForUpdateAsync(connection, transaction, id);
+        if (oldStatus is null)
+        {
+            return false;
+        }
+
+        var newStatus = isDeleted ? RestaurantReviewStatus.Deleted : oldStatus;
+        await connection.ExecuteAsync("""
             UPDATE restaurant_reviews
             SET is_deleted = @IsDeleted,
-                status = CASE WHEN @IsDeleted THEN @DeletedStatus ELSE status END,
+                status = @NewStatus,
                 updated_at = @UpdatedAt
             WHERE id = @Id;
             """, new
         {
             Id = id,
             IsDeleted = isDeleted,
-            DeletedStatus = RestaurantReviewStatus.Deleted,
+            NewStatus = newStatus,
             UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
+        }, transaction);
+
+        await AddModerationLogAsync(
+            connection,
+            transaction,
+            id,
+            adminUserId,
+            ReviewModerationAction.MarkDeleted,
+            oldStatus,
+            newStatus,
+            reason);
+        await transaction.CommitAsync();
+
+        return true;
+    }
+
+    /// <summary>
+    /// 查詢指定評論的後台審核紀錄。
+    /// </summary>
+    public async Task<IReadOnlyList<AdminReviewModerationLogListItem>> GetReviewModerationLogsAsync(long id, int limit)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var rows = await connection.QueryAsync<AdminReviewModerationLogRow>("""
+            SELECT
+                l.id,
+                l.review_id AS ReviewId,
+                l.admin_user_id AS AdminUserId,
+                a.username AS AdminUsername,
+                a.display_name AS AdminDisplayName,
+                l.action,
+                l.old_status AS OldStatus,
+                l.new_status AS NewStatus,
+                l.reason,
+                l.created_at AS CreatedAt
+            FROM restaurant_review_moderation_logs l
+            INNER JOIN admin_users a ON a.id = l.admin_user_id
+            WHERE l.review_id = @ReviewId
+            ORDER BY l.created_at DESC, l.id DESC
+            LIMIT @Limit;
+            """, new
+        {
+            ReviewId = id,
+            Limit = Math.Clamp(limit, 1, 100)
         });
 
-        return affectedRows > 0;
+        return rows.Select(ToModerationLogListItem).ToArray();
     }
 
     /// <summary>
@@ -375,6 +465,66 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
     private static DateTimeOffset ToUtcOffset(DateTime value)
     {
         return new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc));
+    }
+
+    /// <summary>
+    /// 鎖定評論並取得目前狀態。
+    /// </summary>
+    private static async Task<string?> GetReviewStatusForUpdateAsync(
+        MySqlConnector.MySqlConnection connection,
+        System.Data.Common.DbTransaction transaction,
+        long id)
+    {
+        return await connection.QuerySingleOrDefaultAsync<string>("""
+            SELECT status
+            FROM restaurant_reviews
+            WHERE id = @Id
+            FOR UPDATE;
+            """, new { Id = id }, transaction);
+    }
+
+    /// <summary>
+    /// 新增後台評論審核紀錄。
+    /// </summary>
+    private static async Task AddModerationLogAsync(
+        MySqlConnector.MySqlConnection connection,
+        System.Data.Common.DbTransaction transaction,
+        long reviewId,
+        long adminUserId,
+        string action,
+        string oldStatus,
+        string newStatus,
+        string? reason)
+    {
+        await connection.ExecuteAsync("""
+            INSERT INTO restaurant_review_moderation_logs (
+                review_id,
+                admin_user_id,
+                action,
+                old_status,
+                new_status,
+                reason,
+                created_at
+            )
+            VALUES (
+                @ReviewId,
+                @AdminUserId,
+                @Action,
+                @OldStatus,
+                @NewStatus,
+                @Reason,
+                @CreatedAt
+            );
+            """, new
+        {
+            ReviewId = reviewId,
+            AdminUserId = adminUserId,
+            Action = action,
+            OldStatus = oldStatus,
+            NewStatus = newStatus,
+            Reason = NormalizeOptional(reason),
+            CreatedAt = DateTimeOffset.UtcNow.UtcDateTime
+        }, transaction);
     }
 
     /// <summary>
@@ -429,6 +579,24 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             ToUtcOffset(row.UpdatedAt));
     }
 
+    /// <summary>
+    /// 將資料庫資料列轉換為後台審核紀錄列表項目。
+    /// </summary>
+    private static AdminReviewModerationLogListItem ToModerationLogListItem(AdminReviewModerationLogRow row)
+    {
+        return new AdminReviewModerationLogListItem(
+            row.Id,
+            row.ReviewId,
+            row.AdminUserId,
+            row.AdminUsername,
+            row.AdminDisplayName,
+            row.Action,
+            row.OldStatus,
+            row.NewStatus,
+            row.Reason,
+            ToUtcOffset(row.CreatedAt));
+    }
+
     private sealed record RestaurantReviewRow(
         long Id,
         long RestaurantId,
@@ -468,4 +636,16 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         bool IsDeleted,
         DateTime CreatedAt,
         DateTime UpdatedAt);
+
+    private sealed record AdminReviewModerationLogRow(
+        long Id,
+        long ReviewId,
+        long AdminUserId,
+        string AdminUsername,
+        string AdminDisplayName,
+        string Action,
+        string OldStatus,
+        string NewStatus,
+        string? Reason,
+        DateTime CreatedAt);
 }

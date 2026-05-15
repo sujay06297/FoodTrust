@@ -27,15 +27,20 @@ public interface IRestaurantReviewService
     /// <summary>
     /// 驗證並更新評論審核狀態。
     /// </summary>
-    Task<bool> UpdateReviewStatusAsync(long id, string status);
+    Task<bool> UpdateReviewStatusAsync(long id, string status, long adminUserId, string? reason);
 
     /// <summary>
     /// 更新評論可疑標記。
     /// </summary>
-    Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious);
+    Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious, long adminUserId, string? reason);
 
     /// <summary>
     /// 更新評論刪除標記。
     /// </summary>
-    Task<bool> UpdateReviewDeletedAsync(long id, bool isDeleted);
+    Task<bool> UpdateReviewDeletedAsync(long id, bool isDeleted, long adminUserId, string? reason);
+
+    /// <summary>
+    /// 查詢指定評論的後台審核紀錄。
+    /// </summary>
+    Task<IReadOnlyList<AdminReviewModerationLogListItem>> GetReviewModerationLogsAsync(long id, int limit);
 }

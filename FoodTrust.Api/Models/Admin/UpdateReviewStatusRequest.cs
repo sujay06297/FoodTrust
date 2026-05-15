@@ -1,4 +1,5 @@
 namespace FoodTrust.Api.Models.Admin;
 
-public sealed record UpdateReviewStatusRequest(string Status);
-
+public sealed record UpdateReviewStatusRequest(
+    string Status,
+    string? Reason);

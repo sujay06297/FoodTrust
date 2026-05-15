@@ -1,4 +1,5 @@
 namespace FoodTrust.Api.Models.Admin;
 
-public sealed record UpdateReviewDeletedRequest(bool IsDeleted);
-
+public sealed record UpdateReviewDeletedRequest(
+    bool IsDeleted,
+    string? Reason);
