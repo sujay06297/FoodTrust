@@ -108,6 +108,68 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
     }
 
     /// <summary>
+    /// 驗證並建立評論檢舉。
+    /// </summary>
+    public Task<bool> CreateReviewReportAsync(long reviewId, CreateReviewReportCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.ReasonType))
+        {
+            throw new ArgumentException("Review report reason type is required.", nameof(command.ReasonType));
+        }
+
+        if (command.Content is { Length: > 1000 })
+        {
+            throw new ArgumentException("Review report content cannot exceed 1000 characters.", nameof(command.Content));
+        }
+
+        var normalizedCommand = command with
+        {
+            ReasonType = command.ReasonType.Trim(),
+            Content = NormalizeReason(command.Content),
+            ReporterName = NormalizeReason(command.ReporterName)
+        };
+
+        return repository.CreateReviewReportAsync(reviewId, normalizedCommand);
+    }
+
+    /// <summary>
+    /// 查詢後台評論檢舉列表。
+    /// </summary>
+    public Task<AdminReviewReportSearchResult> SearchReviewReportsForAdminAsync(AdminReviewReportSearchRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.Status) && !ReviewReportStatus.IsValid(request.Status.Trim()))
+        {
+            throw new ArgumentException("Invalid review report status.", nameof(request.Status));
+        }
+
+        var normalizedRequest = request with
+        {
+            Status = string.IsNullOrWhiteSpace(request.Status) ? null : request.Status.Trim(),
+            Page = Math.Max(1, request.Page),
+            PageSize = Math.Clamp(request.PageSize, 1, 200)
+        };
+
+        return repository.SearchReviewReportsForAdminAsync(normalizedRequest);
+    }
+
+    /// <summary>
+    /// 驗證並更新評論檢舉處理狀態。
+    /// </summary>
+    public Task<bool> UpdateReviewReportStatusAsync(long reportId, string status, long adminUserId, string? resolutionNote)
+    {
+        if (!ReviewReportStatus.IsValid(status))
+        {
+            throw new ArgumentException("Invalid review report status.", nameof(status));
+        }
+
+        return repository.UpdateReviewReportStatusAsync(
+            reportId,
+            status,
+            adminUserId,
+            NormalizeReason(resolutionNote));
+    }
+
+    /// <summary>
     /// 驗證單一評分類別分數。
     /// </summary>
     private static void ValidateScore(decimal score, string parameterName)

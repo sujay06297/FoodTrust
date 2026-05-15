@@ -166,6 +166,31 @@ public static class DatabaseMigrations
                 CONSTRAINT fk_review_moderation_logs_admin
                     FOREIGN KEY (admin_user_id) REFERENCES admin_users(id)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+            """),
+        new DatabaseMigration(
+            202605150005,
+            "Add restaurant review reports",
+            """
+            CREATE TABLE IF NOT EXISTS restaurant_review_reports (
+                id BIGINT NOT NULL AUTO_INCREMENT,
+                review_id BIGINT NOT NULL,
+                reason_type VARCHAR(100) NOT NULL,
+                content VARCHAR(1000) NULL,
+                reporter_name VARCHAR(100) NULL,
+                status VARCHAR(50) NOT NULL,
+                resolution_note VARCHAR(500) NULL,
+                resolved_by_admin_user_id BIGINT NULL,
+                resolved_at DATETIME(6) NULL,
+                created_at DATETIME(6) NOT NULL,
+                updated_at DATETIME(6) NOT NULL,
+                PRIMARY KEY (id),
+                INDEX ix_review_reports_review (review_id, created_at),
+                INDEX ix_review_reports_status (status, created_at),
+                CONSTRAINT fk_review_reports_review
+                    FOREIGN KEY (review_id) REFERENCES restaurant_reviews(id),
+                CONSTRAINT fk_review_reports_admin
+                    FOREIGN KEY (resolved_by_admin_user_id) REFERENCES admin_users(id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
             """)
     ];
 }

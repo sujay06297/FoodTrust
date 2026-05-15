@@ -43,4 +43,19 @@ public interface IRestaurantReviewRepository
     /// 查詢指定評論的後台審核紀錄。
     /// </summary>
     Task<IReadOnlyList<AdminReviewModerationLogListItem>> GetReviewModerationLogsAsync(long id, int limit);
+
+    /// <summary>
+    /// 建立評論檢舉。
+    /// </summary>
+    Task<bool> CreateReviewReportAsync(long reviewId, CreateReviewReportCommand command);
+
+    /// <summary>
+    /// 查詢後台評論檢舉列表。
+    /// </summary>
+    Task<AdminReviewReportSearchResult> SearchReviewReportsForAdminAsync(AdminReviewReportSearchRequest request);
+
+    /// <summary>
+    /// 更新評論檢舉處理狀態。
+    /// </summary>
+    Task<bool> UpdateReviewReportStatusAsync(long reportId, string status, long adminUserId, string? resolutionNote);
 }

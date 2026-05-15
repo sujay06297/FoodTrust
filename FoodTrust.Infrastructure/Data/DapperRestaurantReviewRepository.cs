@@ -452,6 +452,155 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
     }
 
     /// <summary>
+    /// 建立評論檢舉。
+    /// </summary>
+    public async Task<bool> CreateReviewReportAsync(long reviewId, CreateReviewReportCommand command)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var exists = await connection.ExecuteScalarAsync<bool>("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM restaurant_reviews
+                WHERE id = @ReviewId
+                  AND is_deleted = FALSE
+            );
+            """, new { ReviewId = reviewId });
+
+        if (!exists)
+        {
+            return false;
+        }
+
+        var now = DateTimeOffset.UtcNow.UtcDateTime;
+        await connection.ExecuteAsync("""
+            INSERT INTO restaurant_review_reports (
+                review_id,
+                reason_type,
+                content,
+                reporter_name,
+                status,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                @ReviewId,
+                @ReasonType,
+                @Content,
+                @ReporterName,
+                @Status,
+                @Now,
+                @Now
+            );
+            """, new
+        {
+            ReviewId = reviewId,
+            command.ReasonType,
+            Content = NormalizeOptional(command.Content),
+            ReporterName = NormalizeOptional(command.ReporterName),
+            Status = ReviewReportStatus.Pending,
+            Now = now
+        });
+
+        return true;
+    }
+
+    /// <summary>
+    /// 查詢後台評論檢舉列表。
+    /// </summary>
+    public async Task<AdminReviewReportSearchResult> SearchReviewReportsForAdminAsync(AdminReviewReportSearchRequest request)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 200);
+        var offset = (page - 1) * pageSize;
+        var parameters = new
+        {
+            request.Status,
+            Limit = pageSize,
+            Offset = offset
+        };
+
+        var totalCount = await connection.ExecuteScalarAsync<int>("""
+            SELECT COUNT(*)
+            FROM restaurant_review_reports report
+            WHERE (@Status IS NULL OR report.status = @Status);
+            """, parameters);
+
+        var rows = await connection.QueryAsync<AdminReviewReportRow>("""
+            SELECT
+                report.id,
+                report.review_id AS ReviewId,
+                review.restaurant_id AS RestaurantId,
+                restaurant.name AS RestaurantName,
+                report.reason_type AS ReasonType,
+                report.content,
+                report.reporter_name AS ReporterName,
+                report.status,
+                review.status AS ReviewStatus,
+                review.content AS ReviewContent,
+                report.resolution_note AS ResolutionNote,
+                report.resolved_by_admin_user_id AS ResolvedByAdminUserId,
+                admin.username AS ResolvedByAdminUsername,
+                report.resolved_at AS ResolvedAt,
+                report.created_at AS CreatedAt,
+                report.updated_at AS UpdatedAt
+            FROM restaurant_review_reports report
+            INNER JOIN restaurant_reviews review ON review.id = report.review_id
+            INNER JOIN restaurants restaurant ON restaurant.id = review.restaurant_id
+            LEFT JOIN admin_users admin ON admin.id = report.resolved_by_admin_user_id
+            WHERE (@Status IS NULL OR report.status = @Status)
+            ORDER BY report.created_at DESC, report.id DESC
+            LIMIT @Limit OFFSET @Offset;
+            """, parameters);
+
+        return new AdminReviewReportSearchResult(
+            rows.Select(ToReviewReportListItem).ToArray(),
+            totalCount,
+            page,
+            pageSize);
+    }
+
+    /// <summary>
+    /// 更新評論檢舉處理狀態。
+    /// </summary>
+    public async Task<bool> UpdateReviewReportStatusAsync(
+        long reportId,
+        string status,
+        long adminUserId,
+        string? resolutionNote)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var now = DateTimeOffset.UtcNow.UtcDateTime;
+        var resolvedAt = status == ReviewReportStatus.Pending ? (DateTime?)null : now;
+        var resolvedByAdminUserId = status == ReviewReportStatus.Pending ? (long?)null : adminUserId;
+        var affectedRows = await connection.ExecuteAsync("""
+            UPDATE restaurant_review_reports
+            SET status = @Status,
+                resolution_note = @ResolutionNote,
+                resolved_by_admin_user_id = @AdminUserId,
+                resolved_at = @ResolvedAt,
+                updated_at = @UpdatedAt
+            WHERE id = @ReportId;
+            """, new
+        {
+            ReportId = reportId,
+            Status = status,
+            ResolutionNote = NormalizeOptional(resolutionNote),
+            AdminUserId = resolvedByAdminUserId,
+            ResolvedAt = resolvedAt,
+            UpdatedAt = now
+        });
+
+        return affectedRows > 0;
+    }
+
+    /// <summary>
     /// 修剪選填字串，並將空白值正規化為 null。
     /// </summary>
     private static string? NormalizeOptional(string? value)
@@ -597,6 +746,30 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             ToUtcOffset(row.CreatedAt));
     }
 
+    /// <summary>
+    /// 將資料庫資料列轉換為後台檢舉列表項目。
+    /// </summary>
+    private static AdminReviewReportListItem ToReviewReportListItem(AdminReviewReportRow row)
+    {
+        return new AdminReviewReportListItem(
+            row.Id,
+            row.ReviewId,
+            row.RestaurantId,
+            row.RestaurantName,
+            row.ReasonType,
+            row.Content,
+            row.ReporterName,
+            row.Status,
+            row.ReviewStatus,
+            row.ReviewContent,
+            row.ResolutionNote,
+            row.ResolvedByAdminUserId,
+            row.ResolvedByAdminUsername,
+            row.ResolvedAt is null ? null : ToUtcOffset(row.ResolvedAt.Value),
+            ToUtcOffset(row.CreatedAt),
+            ToUtcOffset(row.UpdatedAt));
+    }
+
     private sealed record RestaurantReviewRow(
         long Id,
         long RestaurantId,
@@ -648,4 +821,22 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         string NewStatus,
         string? Reason,
         DateTime CreatedAt);
+
+    private sealed record AdminReviewReportRow(
+        long Id,
+        long ReviewId,
+        long RestaurantId,
+        string RestaurantName,
+        string ReasonType,
+        string? Content,
+        string? ReporterName,
+        string Status,
+        string ReviewStatus,
+        string ReviewContent,
+        string? ResolutionNote,
+        long? ResolvedByAdminUserId,
+        string? ResolvedByAdminUsername,
+        DateTime? ResolvedAt,
+        DateTime CreatedAt,
+        DateTime UpdatedAt);
 }
