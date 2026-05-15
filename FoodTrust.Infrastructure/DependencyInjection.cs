@@ -2,6 +2,7 @@ using FoodTrust.Core.Admin.Interfaces;
 using FoodTrust.Core.RestaurantImports.Interfaces;
 using FoodTrust.Core.RestaurantImports.Services;
 using FoodTrust.Core.Restaurants.Interfaces;
+using FoodTrust.Core.Users.Interfaces;
 using FoodTrust.Infrastructure.Data;
 using FoodTrust.Infrastructure.Importing;
 using FoodTrust.Infrastructure.Options;
@@ -28,6 +29,7 @@ public static class DependencyInjection
         services.AddSingleton<DatabaseInitializer>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddScoped<IAdminUserRepository, DapperAdminUserRepository>();
+        services.AddScoped<IUserRepository, DapperUserRepository>();
         services.AddScoped<IRestaurantRepository, DapperRestaurantRepository>();
         services.AddScoped<IRestaurantImportTargetRepository, DapperRestaurantRepository>();
         services.AddScoped<IRestaurantReviewRepository, DapperRestaurantReviewRepository>();

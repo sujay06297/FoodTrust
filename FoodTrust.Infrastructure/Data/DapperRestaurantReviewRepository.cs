@@ -264,6 +264,7 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             SELECT
                 rr.id,
                 rr.restaurant_id AS RestaurantId,
+                rr.user_id AS UserId,
                 r.name AS RestaurantName,
                 rr.taste_score AS TasteScore,
                 rr.service_score AS ServiceScore,
@@ -830,6 +831,7 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         return new AdminRestaurantReviewListItem(
             row.Id,
             row.RestaurantId,
+            row.UserId,
             row.RestaurantName,
             row.TasteScore,
             row.ServiceScore,
@@ -915,6 +917,7 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
     private sealed record AdminRestaurantReviewRow(
         long Id,
         long RestaurantId,
+        long? UserId,
         string RestaurantName,
         decimal TasteScore,
         decimal ServiceScore,

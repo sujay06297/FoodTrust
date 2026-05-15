@@ -202,6 +202,30 @@ public static class DatabaseMigrations
 
             CREATE INDEX ix_restaurant_reviews_suspicious
                 ON restaurant_reviews (is_suspicious, suspicious_detected_at);
+            """),
+        new DatabaseMigration(
+            202605150007,
+            "Add users and review ownership",
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id BIGINT NOT NULL AUTO_INCREMENT,
+                email VARCHAR(255) NOT NULL,
+                password_hash VARCHAR(500) NOT NULL,
+                display_name VARCHAR(100) NOT NULL,
+                status VARCHAR(50) NOT NULL,
+                created_at DATETIME(6) NOT NULL,
+                updated_at DATETIME(6) NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ux_users_email UNIQUE (email)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+            ALTER TABLE restaurant_reviews
+                ADD COLUMN user_id BIGINT NULL AFTER restaurant_id,
+                ADD CONSTRAINT fk_restaurant_reviews_user
+                    FOREIGN KEY (user_id) REFERENCES users(id);
+
+            CREATE INDEX ix_restaurant_reviews_user
+                ON restaurant_reviews (user_id, created_at);
             """)
     ];
 }

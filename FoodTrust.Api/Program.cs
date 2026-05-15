@@ -11,6 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 var adminJwtOptions = builder.Configuration
     .GetSection(AdminJwtOptions.SectionName)
     .Get<AdminJwtOptions>() ?? new AdminJwtOptions();
+var userJwtOptions = builder.Configuration
+    .GetSection(UserJwtOptions.SectionName)
+    .Get<UserJwtOptions>() ?? new UserJwtOptions();
 
 builder.Services.AddFoodTrustApiServices();
 builder.Services.AddFoodTrustInfrastructure(builder.Configuration);
@@ -22,9 +25,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidIssuer = adminJwtOptions.Issuer,
             ValidateAudience = true,
-            ValidAudience = adminJwtOptions.Audience,
+            ValidAudiences = [adminJwtOptions.Audience, userJwtOptions.Audience],
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(adminJwtOptions.SigningKey)),
+            IssuerSigningKeys =
+            [
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(adminJwtOptions.SigningKey)),
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(userJwtOptions.SigningKey))
+            ],
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(2)
         };

@@ -3,6 +3,7 @@ namespace FoodTrust.Core.Restaurants.Models;
 public sealed record AdminRestaurantReviewListItem(
     long Id,
     long RestaurantId,
+    long? UserId,
     string RestaurantName,
     decimal TasteScore,
     decimal ServiceScore,
