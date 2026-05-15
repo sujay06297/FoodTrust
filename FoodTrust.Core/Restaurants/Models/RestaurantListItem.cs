@@ -11,6 +11,9 @@ public sealed record RestaurantListItem(
     int? PriceMin,
     int? PriceMax,
     string? CuisineType,
+    decimal? RawAverageScore,
+    decimal? PlatformScore,
+    int ReviewCount,
     string Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);

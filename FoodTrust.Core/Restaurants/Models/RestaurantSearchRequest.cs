@@ -8,5 +8,7 @@ public sealed record RestaurantSearchRequest(
     string? CuisineType,
     int? PriceMin,
     int? PriceMax,
+    decimal? MinScore,
+    string? SortBy,
     int Page,
     int PageSize);

@@ -38,6 +38,16 @@ public sealed class RestaurantService(IRestaurantRepository repository) : IResta
 
         ValidatePriceRange(request.PriceMin, request.PriceMax);
 
+        if (request.MinScore is < 1m or > 5m)
+        {
+            throw new ArgumentException("Minimum score must be between 1 and 5.", nameof(request.MinScore));
+        }
+
+        if (!RestaurantSortBy.IsValid(request.SortBy))
+        {
+            throw new ArgumentException("Invalid restaurant sort option.", nameof(request.SortBy));
+        }
+
         var normalizedRequest = request with
         {
             Page = Math.Max(1, request.Page),

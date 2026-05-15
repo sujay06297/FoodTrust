@@ -44,6 +44,8 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
         [FromQuery] string? cuisineType,
         [FromQuery] int? priceMin,
         [FromQuery] int? priceMax,
+        [FromQuery] decimal? minScore,
+        [FromQuery] string? sortBy,
         [FromQuery] int? page,
         [FromQuery] int? pageSize)
     {
@@ -55,6 +57,8 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
             cuisineType,
             priceMin,
             priceMax,
+            minScore,
+            sortBy,
             page ?? 1,
             pageSize ?? 20);
 

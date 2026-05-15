@@ -10,6 +10,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
     IRestaurantRepository,
     IRestaurantImportTargetRepository
 {
+    private const decimal BayesianMinimumReviewCount = 20m;
+    private const decimal BayesianGlobalAverageScore = 3.6m;
+
     public async Task<RestaurantUpsertResult> UpsertRestaurantsAsync(IReadOnlyCollection<RestaurantImportRecord> records)
     {
         if (records.Count == 0)
@@ -311,6 +314,10 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         var cuisineType = string.IsNullOrWhiteSpace(request.CuisineType)
             ? null
             : request.CuisineType.Trim();
+        var sortBy = string.IsNullOrWhiteSpace(request.SortBy)
+            ? RestaurantSortBy.Latest
+            : request.SortBy.Trim();
+        var orderBy = GetSearchOrderBy(sortBy);
 
         var parameters = new
         {
@@ -321,45 +328,30 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
             CuisineType = cuisineType,
             request.PriceMin,
             request.PriceMax,
+            request.MinScore,
+            ReviewStatus = RestaurantReviewStatus.Approved,
+            MinimumReviewCount = BayesianMinimumReviewCount,
+            GlobalAverageScore = BayesianGlobalAverageScore,
             PageSize = pageSize,
             Offset = offset
         };
 
-        var totalCount = await connection.ExecuteScalarAsync<long>("""
+        var totalCount = await connection.ExecuteScalarAsync<long>($"""
             SELECT COUNT(*)
             FROM restaurants
-            WHERE (@Keyword IS NULL OR name LIKE @Keyword OR branch_name LIKE @Keyword OR address LIKE @Keyword OR phone_number LIKE @Keyword OR cuisine_type LIKE @Keyword OR tags LIKE @Keyword)
-              AND (@Status IS NULL OR status = @Status)
-              AND (@City IS NULL OR city = @City)
-              AND (@District IS NULL OR district = @District)
-              AND (@CuisineType IS NULL OR cuisine_type = @CuisineType)
-              AND (@PriceMin IS NULL OR price_max IS NULL OR price_max >= @PriceMin)
-              AND (@PriceMax IS NULL OR price_min IS NULL OR price_min <= @PriceMax);
-            """, parameters);
-
-        var restaurants = await connection.QueryAsync<RestaurantRow>("""
-            SELECT
-                id,
-                name,
-                branch_name AS BranchName,
-                address,
-                phone_number AS PhoneNumber,
-                city,
-                district,
-                latitude,
-                longitude,
-                opening_hours AS OpeningHours,
-                price_min AS PriceMin,
-                price_max AS PriceMax,
-                cuisine_type AS CuisineType,
-                tags,
-                description,
-                official_url AS OfficialUrl,
-                google_map_url AS GoogleMapUrl,
-                status,
-                created_at AS CreatedAt,
-                updated_at AS UpdatedAt
-            FROM restaurants
+            LEFT JOIN (
+                SELECT
+                    restaurant_id,
+                    AVG(average_score) AS raw_average_score,
+                    ((COUNT(*) / (COUNT(*) + @MinimumReviewCount)) * AVG(average_score)) +
+                        ((@MinimumReviewCount / (COUNT(*) + @MinimumReviewCount)) * @GlobalAverageScore) AS platform_score,
+                    COUNT(*) AS review_count
+                FROM restaurant_reviews
+                WHERE status = @ReviewStatus
+                  AND is_suspicious = FALSE
+                  AND is_deleted = FALSE
+                GROUP BY restaurant_id
+            ) review_stats ON review_stats.restaurant_id = restaurants.id
             WHERE (@Keyword IS NULL OR name LIKE @Keyword OR branch_name LIKE @Keyword OR address LIKE @Keyword OR phone_number LIKE @Keyword OR cuisine_type LIKE @Keyword OR tags LIKE @Keyword)
               AND (@Status IS NULL OR status = @Status)
               AND (@City IS NULL OR city = @City)
@@ -367,7 +359,57 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
               AND (@CuisineType IS NULL OR cuisine_type = @CuisineType)
               AND (@PriceMin IS NULL OR price_max IS NULL OR price_max >= @PriceMin)
               AND (@PriceMax IS NULL OR price_min IS NULL OR price_min <= @PriceMax)
-            ORDER BY id DESC
+              AND (@MinScore IS NULL OR review_stats.platform_score >= @MinScore);
+            """, parameters);
+
+        var restaurants = await connection.QueryAsync<RestaurantRow>($"""
+            SELECT
+                restaurants.id,
+                restaurants.name,
+                restaurants.branch_name AS BranchName,
+                restaurants.address,
+                restaurants.phone_number AS PhoneNumber,
+                restaurants.city,
+                restaurants.district,
+                restaurants.latitude,
+                restaurants.longitude,
+                restaurants.opening_hours AS OpeningHours,
+                restaurants.price_min AS PriceMin,
+                restaurants.price_max AS PriceMax,
+                restaurants.cuisine_type AS CuisineType,
+                restaurants.tags,
+                restaurants.description,
+                restaurants.official_url AS OfficialUrl,
+                restaurants.google_map_url AS GoogleMapUrl,
+                review_stats.raw_average_score AS RawAverageScore,
+                review_stats.platform_score AS PlatformScore,
+                COALESCE(review_stats.review_count, 0) AS ReviewCount,
+                restaurants.status,
+                restaurants.created_at AS CreatedAt,
+                restaurants.updated_at AS UpdatedAt
+            FROM restaurants
+            LEFT JOIN (
+                SELECT
+                    restaurant_id,
+                    AVG(average_score) AS raw_average_score,
+                    ((COUNT(*) / (COUNT(*) + @MinimumReviewCount)) * AVG(average_score)) +
+                        ((@MinimumReviewCount / (COUNT(*) + @MinimumReviewCount)) * @GlobalAverageScore) AS platform_score,
+                    COUNT(*) AS review_count
+                FROM restaurant_reviews
+                WHERE status = @ReviewStatus
+                  AND is_suspicious = FALSE
+                  AND is_deleted = FALSE
+                GROUP BY restaurant_id
+            ) review_stats ON review_stats.restaurant_id = restaurants.id
+            WHERE (@Keyword IS NULL OR restaurants.name LIKE @Keyword OR restaurants.branch_name LIKE @Keyword OR restaurants.address LIKE @Keyword OR restaurants.phone_number LIKE @Keyword OR restaurants.cuisine_type LIKE @Keyword OR restaurants.tags LIKE @Keyword)
+              AND (@Status IS NULL OR restaurants.status = @Status)
+              AND (@City IS NULL OR restaurants.city = @City)
+              AND (@District IS NULL OR restaurants.district = @District)
+              AND (@CuisineType IS NULL OR restaurants.cuisine_type = @CuisineType)
+              AND (@PriceMin IS NULL OR restaurants.price_max IS NULL OR restaurants.price_max >= @PriceMin)
+              AND (@PriceMax IS NULL OR restaurants.price_min IS NULL OR restaurants.price_min <= @PriceMax)
+              AND (@MinScore IS NULL OR review_stats.platform_score >= @MinScore)
+            ORDER BY {orderBy}
             LIMIT @PageSize OFFSET @Offset;
             """, parameters);
 
@@ -383,6 +425,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
                 row.PriceMin,
                 row.PriceMax,
                 row.CuisineType,
+                row.RawAverageScore is null ? null : Math.Round(row.RawAverageScore.Value, 2),
+                row.PlatformScore is null ? null : Math.Round(row.PlatformScore.Value, 2),
+                row.ReviewCount,
                 row.Status,
                 new DateTimeOffset(DateTime.SpecifyKind(row.CreatedAt, DateTimeKind.Utc)),
                 new DateTimeOffset(DateTime.SpecifyKind(row.UpdatedAt, DateTimeKind.Utc))))
@@ -415,6 +460,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
                 description,
                 official_url AS OfficialUrl,
                 google_map_url AS GoogleMapUrl,
+                NULL AS RawAverageScore,
+                NULL AS PlatformScore,
+                0 AS ReviewCount,
                 status,
                 created_at AS CreatedAt,
                 updated_at AS UpdatedAt
@@ -502,6 +550,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         string? Description,
         string? OfficialUrl,
         string? GoogleMapUrl,
+        decimal? RawAverageScore,
+        decimal? PlatformScore,
+        int ReviewCount,
         string Status,
         DateTime CreatedAt,
         DateTime UpdatedAt);
@@ -514,4 +565,14 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         string? RawPhoneNumber,
         DateTime CreatedAt,
         DateTime UpdatedAt);
+
+    private static string GetSearchOrderBy(string sortBy)
+    {
+        return sortBy switch
+        {
+            RestaurantSortBy.Ranking => "review_stats.platform_score DESC, review_stats.review_count DESC, restaurants.id DESC",
+            RestaurantSortBy.ReviewCount => "review_stats.review_count DESC, review_stats.platform_score DESC, restaurants.id DESC",
+            _ => "restaurants.id DESC"
+        };
+    }
 }
