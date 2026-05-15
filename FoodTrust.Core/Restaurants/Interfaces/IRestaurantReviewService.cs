@@ -18,4 +18,24 @@ public interface IRestaurantReviewService
     /// 取得餐廳已核准的公開評論。
     /// </summary>
     Task<IReadOnlyList<RestaurantReviewListItem>> GetRestaurantReviewsAsync(long id, int limit);
+
+    /// <summary>
+    /// 查詢後台評論審核列表。
+    /// </summary>
+    Task<AdminRestaurantReviewSearchResult> SearchReviewsForAdminAsync(AdminRestaurantReviewSearchRequest request);
+
+    /// <summary>
+    /// 驗證並更新評論審核狀態。
+    /// </summary>
+    Task<bool> UpdateReviewStatusAsync(long id, string status);
+
+    /// <summary>
+    /// 更新評論可疑標記。
+    /// </summary>
+    Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious);
+
+    /// <summary>
+    /// 更新評論刪除標記。
+    /// </summary>
+    Task<bool> UpdateReviewDeletedAsync(long id, bool isDeleted);
 }

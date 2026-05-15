@@ -223,6 +223,145 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
     }
 
     /// <summary>
+    /// 查詢後台評論審核列表。
+    /// </summary>
+    public async Task<AdminRestaurantReviewSearchResult> SearchReviewsForAdminAsync(AdminRestaurantReviewSearchRequest request)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 200);
+        var offset = (page - 1) * pageSize;
+        var parameters = new
+        {
+            request.Status,
+            request.IsSuspicious,
+            request.IsDeleted,
+            Limit = pageSize,
+            Offset = offset
+        };
+
+        var totalCount = await connection.ExecuteScalarAsync<int>("""
+            SELECT COUNT(*)
+            FROM restaurant_reviews rr
+            WHERE (@Status IS NULL OR rr.status = @Status)
+              AND (@IsSuspicious IS NULL OR rr.is_suspicious = @IsSuspicious)
+              AND (@IsDeleted IS NULL OR rr.is_deleted = @IsDeleted);
+            """, parameters);
+
+        var rows = await connection.QueryAsync<AdminRestaurantReviewRow>("""
+            SELECT
+                rr.id,
+                rr.restaurant_id AS RestaurantId,
+                r.name AS RestaurantName,
+                rr.taste_score AS TasteScore,
+                rr.service_score AS ServiceScore,
+                rr.environment_score AS EnvironmentScore,
+                rr.value_score AS ValueScore,
+                rr.revisit_score AS RevisitScore,
+                rr.average_score AS AverageScore,
+                rr.content,
+                rr.reviewer_name AS ReviewerName,
+                rr.visit_date AS VisitDate,
+                rr.price_per_person AS PricePerPerson,
+                rr.dining_type AS DiningType,
+                rr.companion_type AS CompanionType,
+                rr.status,
+                rr.is_suspicious AS IsSuspicious,
+                rr.is_deleted AS IsDeleted,
+                rr.created_at AS CreatedAt,
+                rr.updated_at AS UpdatedAt
+            FROM restaurant_reviews rr
+            INNER JOIN restaurants r ON r.id = rr.restaurant_id
+            WHERE (@Status IS NULL OR rr.status = @Status)
+              AND (@IsSuspicious IS NULL OR rr.is_suspicious = @IsSuspicious)
+              AND (@IsDeleted IS NULL OR rr.is_deleted = @IsDeleted)
+            ORDER BY rr.created_at DESC, rr.id DESC
+            LIMIT @Limit OFFSET @Offset;
+            """, parameters);
+
+        return new AdminRestaurantReviewSearchResult(
+            rows.Select(ToAdminReviewListItem).ToArray(),
+            totalCount,
+            page,
+            pageSize);
+    }
+
+    /// <summary>
+    /// 更新評論審核狀態。
+    /// </summary>
+    public async Task<bool> UpdateReviewStatusAsync(long id, string status)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var affectedRows = await connection.ExecuteAsync("""
+            UPDATE restaurant_reviews
+            SET status = @Status,
+                updated_at = @UpdatedAt
+            WHERE id = @Id;
+            """, new
+        {
+            Id = id,
+            Status = status,
+            UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
+        });
+
+        return affectedRows > 0;
+    }
+
+    /// <summary>
+    /// 更新評論可疑標記。
+    /// </summary>
+    public async Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var affectedRows = await connection.ExecuteAsync("""
+            UPDATE restaurant_reviews
+            SET is_suspicious = @IsSuspicious,
+                status = CASE WHEN @IsSuspicious THEN @SuspiciousStatus ELSE status END,
+                updated_at = @UpdatedAt
+            WHERE id = @Id;
+            """, new
+        {
+            Id = id,
+            IsSuspicious = isSuspicious,
+            SuspiciousStatus = RestaurantReviewStatus.Suspicious,
+            UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
+        });
+
+        return affectedRows > 0;
+    }
+
+    /// <summary>
+    /// 更新評論刪除標記。
+    /// </summary>
+    public async Task<bool> UpdateReviewDeletedAsync(long id, bool isDeleted)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var affectedRows = await connection.ExecuteAsync("""
+            UPDATE restaurant_reviews
+            SET is_deleted = @IsDeleted,
+                status = CASE WHEN @IsDeleted THEN @DeletedStatus ELSE status END,
+                updated_at = @UpdatedAt
+            WHERE id = @Id;
+            """, new
+        {
+            Id = id,
+            IsDeleted = isDeleted,
+            DeletedStatus = RestaurantReviewStatus.Deleted,
+            UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
+        });
+
+        return affectedRows > 0;
+    }
+
+    /// <summary>
     /// 修剪選填字串，並將空白值正規化為 null。
     /// </summary>
     private static string? NormalizeOptional(string? value)
@@ -262,6 +401,34 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             ToUtcOffset(row.CreatedAt));
     }
 
+    /// <summary>
+    /// 將資料庫資料列轉換為後台評論審核列表項目。
+    /// </summary>
+    private static AdminRestaurantReviewListItem ToAdminReviewListItem(AdminRestaurantReviewRow row)
+    {
+        return new AdminRestaurantReviewListItem(
+            row.Id,
+            row.RestaurantId,
+            row.RestaurantName,
+            row.TasteScore,
+            row.ServiceScore,
+            row.EnvironmentScore,
+            row.ValueScore,
+            row.RevisitScore,
+            row.AverageScore,
+            row.Content,
+            row.ReviewerName,
+            row.VisitDate is null ? null : DateOnly.FromDateTime(row.VisitDate.Value),
+            row.PricePerPerson,
+            row.DiningType,
+            row.CompanionType,
+            row.Status,
+            row.IsSuspicious,
+            row.IsDeleted,
+            ToUtcOffset(row.CreatedAt),
+            ToUtcOffset(row.UpdatedAt));
+    }
+
     private sealed record RestaurantReviewRow(
         long Id,
         long RestaurantId,
@@ -279,4 +446,26 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         string? CompanionType,
         string Status,
         DateTime CreatedAt);
+
+    private sealed record AdminRestaurantReviewRow(
+        long Id,
+        long RestaurantId,
+        string RestaurantName,
+        decimal TasteScore,
+        decimal ServiceScore,
+        decimal EnvironmentScore,
+        decimal ValueScore,
+        decimal RevisitScore,
+        decimal AverageScore,
+        string Content,
+        string? ReviewerName,
+        DateTime? VisitDate,
+        int? PricePerPerson,
+        string? DiningType,
+        string? CompanionType,
+        string Status,
+        bool IsSuspicious,
+        bool IsDeleted,
+        DateTime CreatedAt,
+        DateTime UpdatedAt);
 }

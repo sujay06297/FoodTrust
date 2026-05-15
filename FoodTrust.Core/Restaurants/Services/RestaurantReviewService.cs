@@ -51,6 +51,55 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
     }
 
     /// <summary>
+    /// 驗證篩選條件並查詢後台評論審核列表。
+    /// </summary>
+    public Task<AdminRestaurantReviewSearchResult> SearchReviewsForAdminAsync(AdminRestaurantReviewSearchRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.Status) && !RestaurantReviewStatus.IsValid(request.Status.Trim()))
+        {
+            throw new ArgumentException("Invalid restaurant review status.", nameof(request.Status));
+        }
+
+        var normalizedRequest = request with
+        {
+            Status = string.IsNullOrWhiteSpace(request.Status) ? null : request.Status.Trim(),
+            Page = Math.Max(1, request.Page),
+            PageSize = Math.Clamp(request.PageSize, 1, 200)
+        };
+
+        return repository.SearchReviewsForAdminAsync(normalizedRequest);
+    }
+
+    /// <summary>
+    /// 驗證並更新評論審核狀態。
+    /// </summary>
+    public Task<bool> UpdateReviewStatusAsync(long id, string status)
+    {
+        if (!RestaurantReviewStatus.IsValid(status))
+        {
+            throw new ArgumentException("Invalid restaurant review status.", nameof(status));
+        }
+
+        return repository.UpdateReviewStatusAsync(id, status);
+    }
+
+    /// <summary>
+    /// 更新評論可疑標記。
+    /// </summary>
+    public Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious)
+    {
+        return repository.UpdateReviewSuspiciousAsync(id, isSuspicious);
+    }
+
+    /// <summary>
+    /// 更新評論刪除標記。
+    /// </summary>
+    public Task<bool> UpdateReviewDeletedAsync(long id, bool isDeleted)
+    {
+        return repository.UpdateReviewDeletedAsync(id, isDeleted);
+    }
+
+    /// <summary>
     /// 驗證單一評分類別分數。
     /// </summary>
     private static void ValidateScore(decimal score, string parameterName)
