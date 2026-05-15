@@ -59,6 +59,43 @@ public sealed class DatabaseInitializer(MySqlConnectionFactory connectionFactory
                     CHECK (score BETWEEN 1 AND 5)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+            CREATE TABLE IF NOT EXISTS restaurant_reviews (
+                id BIGINT NOT NULL AUTO_INCREMENT,
+                restaurant_id BIGINT NOT NULL,
+                taste_score DECIMAL(3,2) NOT NULL,
+                service_score DECIMAL(3,2) NOT NULL,
+                environment_score DECIMAL(3,2) NOT NULL,
+                value_score DECIMAL(3,2) NOT NULL,
+                revisit_score DECIMAL(3,2) NOT NULL,
+                average_score DECIMAL(3,2) NOT NULL,
+                content TEXT NOT NULL,
+                reviewer_name VARCHAR(100) NULL,
+                visit_date DATE NULL,
+                price_per_person INT NULL,
+                dining_type VARCHAR(50) NULL,
+                companion_type VARCHAR(50) NULL,
+                status VARCHAR(50) NOT NULL,
+                is_suspicious BOOLEAN NOT NULL DEFAULT FALSE,
+                is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at DATETIME(6) NOT NULL,
+                updated_at DATETIME(6) NOT NULL,
+                PRIMARY KEY (id),
+                INDEX ix_restaurant_reviews_restaurant (restaurant_id),
+                INDEX ix_restaurant_reviews_score (average_score),
+                CONSTRAINT fk_restaurant_reviews_restaurant
+                    FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+                CONSTRAINT ck_restaurant_reviews_taste_score
+                    CHECK (taste_score BETWEEN 1 AND 5),
+                CONSTRAINT ck_restaurant_reviews_service_score
+                    CHECK (service_score BETWEEN 1 AND 5),
+                CONSTRAINT ck_restaurant_reviews_environment_score
+                    CHECK (environment_score BETWEEN 1 AND 5),
+                CONSTRAINT ck_restaurant_reviews_value_score
+                    CHECK (value_score BETWEEN 1 AND 5),
+                CONSTRAINT ck_restaurant_reviews_revisit_score
+                    CHECK (revisit_score BETWEEN 1 AND 5)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
             CREATE TABLE IF NOT EXISTS restaurant_import_runs (
                 id BIGINT NOT NULL AUTO_INCREMENT,
                 source_system VARCHAR(100) NOT NULL,

@@ -22,6 +22,9 @@ public static class DependencyInjection
         services.AddSingleton<MySqlConnectionFactory>();
         services.AddSingleton<DatabaseInitializer>();
         services.AddScoped<IRestaurantRepository, DapperRestaurantRepository>();
+        services.AddScoped<IRestaurantImportTargetRepository, DapperRestaurantRepository>();
+        services.AddScoped<IRestaurantReviewRepository, DapperRestaurantReviewRepository>();
+        services.AddScoped<IRestaurantRankingRepository, DapperRestaurantRankingRepository>();
         services.AddScoped<IRestaurantImportRunRepository, DapperRestaurantImportRunRepository>();
         services.AddScoped<IRestaurantImportService, RestaurantImportService>();
         services.AddScoped<IRestaurantImportRunService, RestaurantImportRunService>();

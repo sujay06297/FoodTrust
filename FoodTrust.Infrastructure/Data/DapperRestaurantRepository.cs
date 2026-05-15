@@ -1,11 +1,14 @@
 using Dapper;
+using FoodTrust.Core.RestaurantImports.Interfaces;
 using FoodTrust.Core.RestaurantImports.Models;
 using FoodTrust.Core.Restaurants.Interfaces;
 using FoodTrust.Core.Restaurants.Models;
 
 namespace FoodTrust.Infrastructure.Data;
 
-public sealed class DapperRestaurantRepository(MySqlConnectionFactory connectionFactory) : IRestaurantRepository
+public sealed class DapperRestaurantRepository(MySqlConnectionFactory connectionFactory) :
+    IRestaurantRepository,
+    IRestaurantImportTargetRepository
 {
     public async Task<RestaurantUpsertResult> UpsertRestaurantsAsync(IReadOnlyCollection<RestaurantImportRecord> records)
     {
@@ -206,75 +209,6 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         return affectedRows > 0;
     }
 
-    public async Task<bool> AddRestaurantRatingAsync(long id, CreateRestaurantRatingCommand command)
-    {
-        await using var connection = connectionFactory.Create();
-        await connection.OpenAsync();
-
-        var exists = await connection.ExecuteScalarAsync<bool>("""
-            SELECT EXISTS (
-                SELECT 1
-                FROM restaurants
-                WHERE id = @Id
-            );
-            """, new { Id = id });
-
-        if (!exists)
-        {
-            return false;
-        }
-
-        await connection.ExecuteAsync("""
-            INSERT INTO restaurant_ratings (restaurant_id, score, review_comment, reviewer_name, created_at)
-            VALUES (@RestaurantId, @Score, @Comment, @ReviewerName, @CreatedAt);
-            """, new
-        {
-            RestaurantId = id,
-            command.Score,
-            Comment = NormalizeOptional(command.Comment),
-            ReviewerName = NormalizeOptional(command.ReviewerName),
-            CreatedAt = DateTimeOffset.UtcNow.UtcDateTime
-        });
-
-        return true;
-    }
-
-    public async Task<IReadOnlyList<RestaurantRankingItem>> GetRestaurantRankingsAsync(int limit)
-    {
-        await using var connection = connectionFactory.Create();
-        await connection.OpenAsync();
-
-        var rows = await connection.QueryAsync<RestaurantRankingRow>("""
-            SELECT
-                r.id,
-                r.name,
-                r.address,
-                r.phone_number AS PhoneNumber,
-                AVG(rr.score) AS AverageScore,
-                COUNT(*) AS RatingCount
-            FROM restaurants r
-            INNER JOIN restaurant_ratings rr ON rr.restaurant_id = r.id
-            WHERE r.status = @Status
-            GROUP BY r.id, r.name, r.address, r.phone_number
-            ORDER BY AverageScore DESC, RatingCount DESC, r.id DESC
-            LIMIT @Limit;
-            """, new
-        {
-            Status = RestaurantStatus.Active,
-            Limit = Math.Clamp(limit, 1, 100)
-        });
-
-        return rows
-            .Select(row => new RestaurantRankingItem(
-                row.Id,
-                row.Name,
-                row.Address,
-                row.PhoneNumber,
-                Math.Round(row.AverageScore, 2),
-                row.RatingCount))
-            .ToArray();
-    }
-
     public async Task<RestaurantSearchResult> SearchRestaurantsAsync(RestaurantSearchRequest request)
     {
         await using var connection = connectionFactory.Create();
@@ -411,14 +345,6 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         DateTime CreatedAt,
         DateTime UpdatedAt);
 
-    private sealed record RestaurantRankingRow(
-        long Id,
-        string Name,
-        string Address,
-        string? PhoneNumber,
-        double AverageScore,
-        int RatingCount);
-
     private sealed record RestaurantSourceRow(
         string SourceSystem,
         string SourceKey,
@@ -427,5 +353,4 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         string? RawPhoneNumber,
         DateTime CreatedAt,
         DateTime UpdatedAt);
-
 }

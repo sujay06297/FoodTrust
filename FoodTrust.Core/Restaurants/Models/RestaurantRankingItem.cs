@@ -5,5 +5,7 @@ public sealed record RestaurantRankingItem(
     string Name,
     string Address,
     string? PhoneNumber,
-    double AverageScore,
-    int RatingCount);
+    decimal RawAverageScore,
+    decimal PlatformScore,
+    decimal RankingScore,
+    int ReviewCount);

@@ -8,6 +8,8 @@ public static class DependencyInjection
     public static IServiceCollection AddFoodTrustApiServices(this IServiceCollection services)
     {
         services.AddScoped<IRestaurantService, RestaurantService>();
+        services.AddScoped<IRestaurantReviewService, RestaurantReviewService>();
+        services.AddScoped<IRestaurantRankingService, RestaurantRankingService>();
 
         return services;
     }

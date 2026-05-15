@@ -36,13 +36,6 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
         return Ok(result);
     }
 
-    [HttpGet("rankings")]
-    public async Task<ActionResult<IReadOnlyList<RestaurantRankingItem>>> Rankings([FromQuery] int? limit)
-    {
-        var rankings = await restaurantService.GetRestaurantRankingsAsync(limit ?? 20);
-        return Ok(rankings);
-    }
-
     [HttpGet("{id:long}")]
     public async Task<ActionResult<RestaurantDetail>> Get(long id)
     {
@@ -63,17 +56,5 @@ public sealed class RestaurantsController(IRestaurantService restaurantService) 
     {
         var updated = await restaurantService.UpdateRestaurantStatusAsync(id, request.Status);
         return updated ? NoContent() : NotFound();
-    }
-
-    [HttpPost("{id:long}/ratings")]
-    public async Task<IActionResult> AddRating(long id, [FromBody] CreateRestaurantRatingRequest request)
-    {
-        var command = new CreateRestaurantRatingCommand(
-            request.Score,
-            request.Comment,
-            request.ReviewerName);
-        var created = await restaurantService.AddRestaurantRatingAsync(id, command);
-
-        return created ? NoContent() : NotFound();
     }
 }
