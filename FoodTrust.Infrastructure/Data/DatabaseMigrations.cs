@@ -191,6 +191,17 @@ public static class DatabaseMigrations
                 CONSTRAINT fk_review_reports_admin
                     FOREIGN KEY (resolved_by_admin_user_id) REFERENCES admin_users(id)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+            """),
+        new DatabaseMigration(
+            202605150006,
+            "Add review suspicion detection fields",
+            """
+            ALTER TABLE restaurant_reviews
+                ADD COLUMN suspicious_reason VARCHAR(1000) NULL AFTER is_suspicious,
+                ADD COLUMN suspicious_detected_at DATETIME(6) NULL AFTER suspicious_reason;
+
+            CREATE INDEX ix_restaurant_reviews_suspicious
+                ON restaurant_reviews (is_suspicious, suspicious_detected_at);
             """)
     ];
 }

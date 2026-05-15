@@ -18,7 +18,8 @@ public sealed record AdminRestaurantReviewListItem(
     string? CompanionType,
     string Status,
     bool IsSuspicious,
+    string? SuspiciousReason,
+    DateTimeOffset? SuspiciousDetectedAt,
     bool IsDeleted,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
-

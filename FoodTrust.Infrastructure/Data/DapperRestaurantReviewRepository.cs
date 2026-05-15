@@ -119,6 +119,7 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
              command.RevisitScore) / 5m,
             2,
             MidpointRounding.AwayFromZero);
+        var suspicion = await DetectSuspiciousReviewAsync(connection, id, command, averageScore, now);
 
         await connection.ExecuteAsync("""
             INSERT INTO restaurant_reviews (
@@ -136,6 +137,9 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
                 dining_type,
                 companion_type,
                 status,
+                is_suspicious,
+                suspicious_reason,
+                suspicious_detected_at,
                 created_at,
                 updated_at
             )
@@ -154,6 +158,9 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
                 @DiningType,
                 @CompanionType,
                 @Status,
+                @IsSuspicious,
+                @SuspiciousReason,
+                @SuspiciousDetectedAt,
                 @Now,
                 @Now
             );
@@ -172,7 +179,10 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             command.PricePerPerson,
             DiningType = NormalizeOptional(command.DiningType),
             CompanionType = NormalizeOptional(command.CompanionType),
-            Status = RestaurantReviewStatus.Approved,
+            Status = suspicion.IsSuspicious ? RestaurantReviewStatus.Suspicious : RestaurantReviewStatus.Approved,
+            suspicion.IsSuspicious,
+            SuspiciousReason = suspicion.Reason,
+            SuspiciousDetectedAt = suspicion.IsSuspicious ? now : (DateTime?)null,
             Now = now
         });
 
@@ -269,6 +279,8 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
                 rr.companion_type AS CompanionType,
                 rr.status,
                 rr.is_suspicious AS IsSuspicious,
+                rr.suspicious_reason AS SuspiciousReason,
+                rr.suspicious_detected_at AS SuspiciousDetectedAt,
                 rr.is_deleted AS IsDeleted,
                 rr.created_at AS CreatedAt,
                 rr.updated_at AS UpdatedAt
@@ -344,11 +356,17 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             return false;
         }
 
-        var newStatus = isSuspicious ? RestaurantReviewStatus.Suspicious : oldStatus;
+        var newStatus = isSuspicious
+            ? RestaurantReviewStatus.Suspicious
+            : oldStatus == RestaurantReviewStatus.Suspicious
+                ? RestaurantReviewStatus.Approved
+                : oldStatus;
         await connection.ExecuteAsync("""
             UPDATE restaurant_reviews
             SET is_suspicious = @IsSuspicious,
                 status = @NewStatus,
+                suspicious_reason = CASE WHEN @IsSuspicious THEN suspicious_reason ELSE NULL END,
+                suspicious_detected_at = CASE WHEN @IsSuspicious THEN suspicious_detected_at ELSE NULL END,
                 updated_at = @UpdatedAt
             WHERE id = @Id;
             """, new
@@ -388,7 +406,11 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             return false;
         }
 
-        var newStatus = isDeleted ? RestaurantReviewStatus.Deleted : oldStatus;
+        var newStatus = isDeleted
+            ? RestaurantReviewStatus.Deleted
+            : oldStatus == RestaurantReviewStatus.Deleted
+                ? RestaurantReviewStatus.Approved
+                : oldStatus;
         await connection.ExecuteAsync("""
             UPDATE restaurant_reviews
             SET is_deleted = @IsDeleted,
@@ -617,6 +639,106 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
     }
 
     /// <summary>
+    /// 依規則式條件偵測新評論是否可疑。
+    /// </summary>
+    private static async Task<ReviewSuspicionResult> DetectSuspiciousReviewAsync(
+        MySqlConnector.MySqlConnection connection,
+        long restaurantId,
+        CreateRestaurantReviewCommand command,
+        decimal averageScore,
+        DateTime now)
+    {
+        var reasons = new List<string>();
+        var normalizedContent = command.Content.Trim().ToLowerInvariant();
+        var reviewerName = NormalizeOptional(command.ReviewerName);
+        var recentThreshold = now.AddHours(-24);
+        var duplicateThreshold = now.AddDays(-30);
+
+        if (reviewerName is not null)
+        {
+            var recentReviewerCount = await connection.ExecuteScalarAsync<int>("""
+                SELECT COUNT(*)
+                FROM restaurant_reviews
+                WHERE restaurant_id = @RestaurantId
+                  AND reviewer_name = @ReviewerName
+                  AND created_at >= @RecentThreshold;
+                """, new
+            {
+                RestaurantId = restaurantId,
+                ReviewerName = reviewerName,
+                RecentThreshold = recentThreshold
+            });
+
+            if (recentReviewerCount >= 2)
+            {
+                reasons.Add("同一評論者 24 小時內對同餐廳留下多筆評論");
+            }
+        }
+
+        var duplicateContentCount = await connection.ExecuteScalarAsync<int>("""
+            SELECT COUNT(*)
+            FROM restaurant_reviews
+            WHERE restaurant_id = @RestaurantId
+              AND LOWER(TRIM(content)) = @NormalizedContent
+              AND created_at >= @DuplicateThreshold;
+            """, new
+        {
+            RestaurantId = restaurantId,
+            NormalizedContent = normalizedContent,
+            DuplicateThreshold = duplicateThreshold
+        });
+
+        if (duplicateContentCount > 0)
+        {
+            reasons.Add("30 天內出現相同評論內容");
+        }
+
+        if (IsLowQualityContent(command.Content))
+        {
+            reasons.Add("評論內容重複字元或資訊量偏低");
+        }
+
+        var scoreSignal = await connection.QuerySingleOrDefaultAsync<RestaurantScoreSignal>("""
+            SELECT
+                COUNT(*) AS ReviewCount,
+                AVG(average_score) AS AverageScore
+            FROM restaurant_reviews
+            WHERE restaurant_id = @RestaurantId
+              AND status = @Status
+              AND is_suspicious = FALSE
+              AND is_deleted = FALSE;
+            """, new
+        {
+            RestaurantId = restaurantId,
+            Status = RestaurantReviewStatus.Approved
+        });
+
+        if (scoreSignal is { ReviewCount: >= 5, AverageScore: not null } &&
+            Math.Abs(averageScore - scoreSignal.AverageScore.Value) >= 2m)
+        {
+            reasons.Add("分數與餐廳既有平均差距過大");
+        }
+
+        return new ReviewSuspicionResult(
+            reasons.Count > 0,
+            reasons.Count > 0 ? string.Join("；", reasons) : null);
+    }
+
+    /// <summary>
+    /// 判斷評論文字是否具備低品質特徵。
+    /// </summary>
+    private static bool IsLowQualityContent(string content)
+    {
+        var trimmed = content.Trim();
+        var distinctCharacters = trimmed
+            .Where(character => !char.IsWhiteSpace(character) && !char.IsPunctuation(character))
+            .Distinct()
+            .Count();
+
+        return distinctCharacters <= 8 || trimmed.Length < 45;
+    }
+
+    /// <summary>
     /// 鎖定評論並取得目前狀態。
     /// </summary>
     private static async Task<string?> GetReviewStatusForUpdateAsync(
@@ -723,6 +845,8 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             row.CompanionType,
             row.Status,
             row.IsSuspicious,
+            row.SuspiciousReason,
+            row.SuspiciousDetectedAt is null ? null : ToUtcOffset(row.SuspiciousDetectedAt.Value),
             row.IsDeleted,
             ToUtcOffset(row.CreatedAt),
             ToUtcOffset(row.UpdatedAt));
@@ -806,9 +930,19 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         string? CompanionType,
         string Status,
         bool IsSuspicious,
+        string? SuspiciousReason,
+        DateTime? SuspiciousDetectedAt,
         bool IsDeleted,
         DateTime CreatedAt,
         DateTime UpdatedAt);
+
+    private sealed record ReviewSuspicionResult(
+        bool IsSuspicious,
+        string? Reason);
+
+    private sealed record RestaurantScoreSignal(
+        int ReviewCount,
+        decimal? AverageScore);
 
     private sealed record AdminReviewModerationLogRow(
         long Id,
