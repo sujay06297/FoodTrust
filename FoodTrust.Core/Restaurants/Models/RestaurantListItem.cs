@@ -13,6 +13,7 @@ public sealed record RestaurantListItem(
     string? CuisineType,
     decimal? RawAverageScore,
     decimal? PlatformScore,
+    int FavoriteCount,
     int ReviewCount,
     string Status,
     DateTimeOffset CreatedAt,

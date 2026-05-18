@@ -8,4 +8,5 @@ public sealed record RestaurantRankingItem(
     decimal RawAverageScore,
     decimal PlatformScore,
     decimal RankingScore,
+    int FavoriteCount,
     int ReviewCount);

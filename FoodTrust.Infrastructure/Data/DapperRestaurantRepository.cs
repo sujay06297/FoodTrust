@@ -12,6 +12,7 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
 {
     private const decimal BayesianMinimumReviewCount = 20m;
     private const decimal BayesianGlobalAverageScore = 3.6m;
+    private const decimal FavoriteScoreNormalizationCount = 100m;
 
     /// <summary>
     /// 寫入或更新匯入餐廳資料，並將來源資料連結到餐廳。
@@ -398,6 +399,7 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
                 restaurants.google_map_url AS GoogleMapUrl,
                 review_stats.raw_average_score AS RawAverageScore,
                 review_stats.platform_score AS PlatformScore,
+                COALESCE(favorite_stats.favorite_count, 0) AS FavoriteCount,
                 COALESCE(review_stats.review_count, 0) AS ReviewCount,
                 restaurants.status,
                 restaurants.created_at AS CreatedAt,
@@ -416,6 +418,13 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
                   AND is_deleted = FALSE
                 GROUP BY restaurant_id
             ) review_stats ON review_stats.restaurant_id = restaurants.id
+            LEFT JOIN (
+                SELECT
+                    restaurant_id,
+                    COUNT(*) AS favorite_count
+                FROM favorite_restaurants
+                GROUP BY restaurant_id
+            ) favorite_stats ON favorite_stats.restaurant_id = restaurants.id
             WHERE (@Keyword IS NULL OR restaurants.name LIKE @Keyword OR restaurants.branch_name LIKE @Keyword OR restaurants.address LIKE @Keyword OR restaurants.phone_number LIKE @Keyword OR restaurants.cuisine_type LIKE @Keyword OR restaurants.tags LIKE @Keyword)
               AND (@Status IS NULL OR restaurants.status = @Status)
               AND (@City IS NULL OR restaurants.city = @City)
@@ -442,6 +451,7 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
                 row.CuisineType,
                 row.RawAverageScore is null ? null : Math.Round(row.RawAverageScore.Value, 2),
                 row.PlatformScore is null ? null : Math.Round(row.PlatformScore.Value, 2),
+                row.FavoriteCount,
                 row.ReviewCount,
                 row.Status,
                 new DateTimeOffset(DateTime.SpecifyKind(row.CreatedAt, DateTimeKind.Utc)),
@@ -480,6 +490,7 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
                 google_map_url AS GoogleMapUrl,
                 NULL AS RawAverageScore,
                 NULL AS PlatformScore,
+                0 AS FavoriteCount,
                 0 AS ReviewCount,
                 status,
                 created_at AS CreatedAt,
@@ -576,6 +587,7 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
         string? GoogleMapUrl,
         decimal? RawAverageScore,
         decimal? PlatformScore,
+        int FavoriteCount,
         int ReviewCount,
         string Status,
         DateTime CreatedAt,
@@ -597,8 +609,9 @@ public sealed class DapperRestaurantRepository(MySqlConnectionFactory connection
     {
         return sortBy switch
         {
-            RestaurantSortBy.Ranking => "review_stats.platform_score DESC, review_stats.review_count DESC, restaurants.id DESC",
+            RestaurantSortBy.Ranking => $"((COALESCE(review_stats.platform_score, 0) * 0.95) + (LEAST(COALESCE(favorite_stats.favorite_count, 0) / {FavoriteScoreNormalizationCount}, 1) * 5 * 0.05)) DESC, review_stats.review_count DESC, favorite_stats.favorite_count DESC, restaurants.id DESC",
             RestaurantSortBy.ReviewCount => "review_stats.review_count DESC, review_stats.platform_score DESC, restaurants.id DESC",
+            RestaurantSortBy.FavoriteCount => "favorite_stats.favorite_count DESC, review_stats.platform_score DESC, restaurants.id DESC",
             _ => "restaurants.id DESC"
         };
     }

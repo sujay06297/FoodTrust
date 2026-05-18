@@ -8,6 +8,7 @@ public sealed class DapperRestaurantRankingRepository(MySqlConnectionFactory con
 {
     private const decimal BayesianMinimumReviewCount = 20m;
     private const decimal BayesianGlobalAverageScore = 3.6m;
+    private const decimal FavoriteScoreNormalizationCount = 100m;
 
     /// <summary>
     /// 依 Bayesian 平台分數與評論數取得餐廳排行。
@@ -17,25 +18,40 @@ public sealed class DapperRestaurantRankingRepository(MySqlConnectionFactory con
         await using var connection = connectionFactory.Create();
         await connection.OpenAsync();
 
-        var rows = await connection.QueryAsync<RestaurantRankingRow>("""
+        var rows = await connection.QueryAsync<RestaurantRankingRow>($"""
             SELECT
                 r.id,
                 r.name,
                 r.address,
                 r.phone_number AS PhoneNumber,
-                AVG(rr.average_score) AS RawAverageScore,
-                ((COUNT(*) / (COUNT(*) + @MinimumReviewCount)) * AVG(rr.average_score)) +
-                    ((@MinimumReviewCount / (COUNT(*) + @MinimumReviewCount)) * @GlobalAverageScore) AS PlatformScore,
-                ((COUNT(*) / (COUNT(*) + @MinimumReviewCount)) * AVG(rr.average_score)) +
-                    ((@MinimumReviewCount / (COUNT(*) + @MinimumReviewCount)) * @GlobalAverageScore) AS RankingScore,
-                COUNT(*) AS ReviewCount
+                review_stats.raw_average_score AS RawAverageScore,
+                review_stats.platform_score AS PlatformScore,
+                ((review_stats.platform_score * 0.95) +
+                    (LEAST(COALESCE(favorite_stats.favorite_count, 0) / {FavoriteScoreNormalizationCount}, 1) * 5 * 0.05)) AS RankingScore,
+                COALESCE(favorite_stats.favorite_count, 0) AS FavoriteCount,
+                review_stats.review_count AS ReviewCount
             FROM restaurants r
-            INNER JOIN restaurant_reviews rr ON rr.restaurant_id = r.id
+            INNER JOIN (
+                SELECT
+                    restaurant_id,
+                    AVG(average_score) AS raw_average_score,
+                    ((COUNT(*) / (COUNT(*) + @MinimumReviewCount)) * AVG(average_score)) +
+                        ((@MinimumReviewCount / (COUNT(*) + @MinimumReviewCount)) * @GlobalAverageScore) AS platform_score,
+                    COUNT(*) AS review_count
+                FROM restaurant_reviews
+                WHERE status = @ReviewStatus
+                  AND is_suspicious = FALSE
+                  AND is_deleted = FALSE
+                GROUP BY restaurant_id
+            ) review_stats ON review_stats.restaurant_id = r.id
+            LEFT JOIN (
+                SELECT
+                    restaurant_id,
+                    COUNT(*) AS favorite_count
+                FROM favorite_restaurants
+                GROUP BY restaurant_id
+            ) favorite_stats ON favorite_stats.restaurant_id = r.id
             WHERE r.status = @RestaurantStatus
-              AND rr.status = @ReviewStatus
-              AND rr.is_suspicious = FALSE
-              AND rr.is_deleted = FALSE
-            GROUP BY r.id, r.name, r.address, r.phone_number
             ORDER BY RankingScore DESC, ReviewCount DESC, r.id DESC
             LIMIT @Limit;
             """, new
@@ -56,6 +72,7 @@ public sealed class DapperRestaurantRankingRepository(MySqlConnectionFactory con
                 Math.Round(row.RawAverageScore, 2),
                 Math.Round(row.PlatformScore, 2),
                 Math.Round(row.RankingScore, 4),
+                row.FavoriteCount,
                 row.ReviewCount))
             .ToArray();
     }
@@ -68,5 +85,6 @@ public sealed class DapperRestaurantRankingRepository(MySqlConnectionFactory con
         decimal RawAverageScore,
         decimal PlatformScore,
         decimal RankingScore,
+        int FavoriteCount,
         int ReviewCount);
 }

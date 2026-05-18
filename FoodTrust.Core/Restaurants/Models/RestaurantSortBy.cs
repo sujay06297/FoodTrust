@@ -5,6 +5,7 @@ public static class RestaurantSortBy
     public const string Latest = "latest";
     public const string Ranking = "ranking";
     public const string ReviewCount = "reviewCount";
+    public const string FavoriteCount = "favoriteCount";
 
     /// <summary>
     /// 判斷指定的排序選項是否受支援。
@@ -12,6 +13,6 @@ public static class RestaurantSortBy
     public static bool IsValid(string? sortBy)
     {
         return string.IsNullOrWhiteSpace(sortBy) ||
-            sortBy is Latest or Ranking or ReviewCount;
+            sortBy is Latest or Ranking or ReviewCount or FavoriteCount;
     }
 }
