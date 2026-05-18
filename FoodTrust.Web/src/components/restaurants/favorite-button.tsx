@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { addFavorite, removeFavorite } from "@/lib/api/restaurants";
+import {
+  isFavoriteRestaurant,
+  markFavoriteRestaurant,
+  unmarkFavoriteRestaurant,
+} from "@/lib/auth/favorite-store";
 import { getAccessToken } from "@/lib/auth/token-store";
 
 export function FavoriteButton({ restaurantId }: { restaurantId: number }) {
-  const [active, setActive] = useState(false);
+  const router = useRouter();
+  const [active, setActive] = useState(() => isFavoriteRestaurant(restaurantId));
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,13 +29,16 @@ export function FavoriteButton({ restaurantId }: { restaurantId: number }) {
     try {
       if (active) {
         await removeFavorite(restaurantId, token);
+        unmarkFavoriteRestaurant(restaurantId);
         setActive(false);
         setMessage("已取消收藏。");
       } else {
         await addFavorite(restaurantId, token);
+        markFavoriteRestaurant(restaurantId);
         setActive(true);
         setMessage("已加入收藏。");
       }
+      router.refresh();
     } catch {
       setMessage("操作失敗，請稍後再試。");
     } finally {

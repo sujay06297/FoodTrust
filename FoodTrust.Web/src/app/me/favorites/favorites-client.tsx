@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getMyFavorites } from "@/lib/api/restaurants";
 import type { FavoriteRestaurantSearchResult } from "@/lib/api/types";
+import { rememberFavoriteRestaurants } from "@/lib/auth/favorite-store";
 import { getAccessToken, loadAuth } from "@/lib/auth/token-store";
 
 export function FavoritesClient() {
@@ -19,6 +20,7 @@ export function FavoritesClient() {
 
     getMyFavorites(token)
       .then((data) => {
+        rememberFavoriteRestaurants(data.items.map((item) => item.restaurantId ?? item.id));
         setResult(data);
         setMessage("");
       })
