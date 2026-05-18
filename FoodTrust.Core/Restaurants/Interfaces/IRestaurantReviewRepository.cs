@@ -35,6 +35,15 @@ public interface IRestaurantReviewRepository
     Task<bool> UpdateReviewStatusAsync(long id, string status, long adminUserId, string? reason);
 
     /// <summary>
+    /// 批次更新評論審核狀態。
+    /// </summary>
+    Task<AdminBatchReviewStatusUpdateResult> BatchUpdateReviewStatusAsync(
+        IReadOnlyList<long> ids,
+        string status,
+        long adminUserId,
+        string? reason);
+
+    /// <summary>
     /// 更新評論可疑標記。
     /// </summary>
     Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious, long adminUserId, string? reason);

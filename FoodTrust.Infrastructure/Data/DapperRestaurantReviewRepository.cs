@@ -371,6 +371,64 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
     }
 
     /// <summary>
+    /// 批次更新評論審核狀態並保留每筆操作紀錄。
+    /// </summary>
+    public async Task<AdminBatchReviewStatusUpdateResult> BatchUpdateReviewStatusAsync(
+        IReadOnlyList<long> ids,
+        string status,
+        long adminUserId,
+        string? reason)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        var now = DateTimeOffset.UtcNow.UtcDateTime;
+        var updatedCount = 0;
+        var notFoundReviewIds = new List<long>();
+
+        foreach (var id in ids)
+        {
+            var oldStatus = await GetReviewStatusForUpdateAsync(connection, transaction, id);
+            if (oldStatus is null)
+            {
+                notFoundReviewIds.Add(id);
+                continue;
+            }
+
+            await connection.ExecuteAsync("""
+                UPDATE restaurant_reviews
+                SET status = @Status,
+                    updated_at = @UpdatedAt
+                WHERE id = @Id;
+                """, new
+            {
+                Id = id,
+                Status = status,
+                UpdatedAt = now
+            }, transaction);
+
+            await AddModerationLogAsync(
+                connection,
+                transaction,
+                id,
+                adminUserId,
+                ReviewModerationAction.UpdateStatus,
+                oldStatus,
+                status,
+                reason);
+            updatedCount++;
+        }
+
+        await transaction.CommitAsync();
+
+        return new AdminBatchReviewStatusUpdateResult(
+            ids.Count,
+            updatedCount,
+            notFoundReviewIds);
+    }
+
+    /// <summary>
     /// 更新評論可疑標記。
     /// </summary>
     public async Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious, long adminUserId, string? reason)

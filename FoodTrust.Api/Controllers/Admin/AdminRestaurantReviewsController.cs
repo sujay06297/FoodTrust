@@ -50,6 +50,22 @@ public sealed class AdminRestaurantReviewsController(IRestaurantReviewService re
     }
 
     /// <summary>
+    /// 批次更新評論審核狀態。
+    /// </summary>
+    [HttpPatch("status")]
+    public async Task<ActionResult<AdminBatchReviewStatusUpdateResult>> BatchUpdateStatus(
+        [FromBody] BatchUpdateReviewStatusRequest request)
+    {
+        var result = await reviewService.BatchUpdateReviewStatusAsync(
+            request.ReviewIds,
+            request.Status,
+            GetCurrentAdminUserId(),
+            request.Reason);
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// 更新評論可疑標記。
     /// </summary>
     [HttpPatch("{id:long}/suspicious")]

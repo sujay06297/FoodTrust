@@ -104,6 +104,43 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
     }
 
     /// <summary>
+    /// 驗證並批次更新評論審核狀態。
+    /// </summary>
+    public Task<AdminBatchReviewStatusUpdateResult> BatchUpdateReviewStatusAsync(
+        IReadOnlyList<long> ids,
+        string status,
+        long adminUserId,
+        string? reason)
+    {
+        if (ids.Count == 0)
+        {
+            throw new ArgumentException("Review identifiers are required.", nameof(ids));
+        }
+
+        if (ids.Count > 200)
+        {
+            throw new ArgumentException("Batch review status update cannot exceed 200 reviews.", nameof(ids));
+        }
+
+        if (ids.Any(id => id <= 0))
+        {
+            throw new ArgumentException("Review identifiers must be positive.", nameof(ids));
+        }
+
+        if (!RestaurantReviewStatus.IsValid(status))
+        {
+            throw new ArgumentException("Invalid restaurant review status.", nameof(status));
+        }
+
+        var distinctIds = ids.Distinct().ToArray();
+        return repository.BatchUpdateReviewStatusAsync(
+            distinctIds,
+            status,
+            adminUserId,
+            NormalizeReason(reason));
+    }
+
+    /// <summary>
     /// 更新評論可疑標記。
     /// </summary>
     public Task<bool> UpdateReviewSuspiciousAsync(long id, bool isSuspicious, long adminUserId, string? reason)
