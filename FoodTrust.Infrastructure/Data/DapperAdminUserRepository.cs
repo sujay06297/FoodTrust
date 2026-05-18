@@ -48,6 +48,31 @@ public sealed class DapperAdminUserRepository(MySqlConnectionFactory connectionF
     }
 
     /// <summary>
+    /// 依識別碼查詢管理員。
+    /// </summary>
+    public async Task<AdminUser?> FindByIdAsync(long id)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var row = await connection.QuerySingleOrDefaultAsync<AdminUserRow>("""
+            SELECT
+                id,
+                username,
+                password_hash AS PasswordHash,
+                display_name AS DisplayName,
+                role,
+                is_active AS IsActive,
+                created_at AS CreatedAt,
+                updated_at AS UpdatedAt
+            FROM admin_users
+            WHERE id = @Id;
+            """, new { Id = id });
+
+        return row is null ? null : ToAdminUser(row);
+    }
+
+    /// <summary>
     /// 建立新的後台管理員。
     /// </summary>
     public async Task<AdminUser> CreateAsync(CreateAdminUserCommand command)
@@ -158,6 +183,30 @@ public sealed class DapperAdminUserRepository(MySqlConnectionFactory connectionF
         {
             Id = id,
             IsActive = isActive,
+            UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
+        });
+
+        return affectedRows > 0;
+    }
+
+    /// <summary>
+    /// 更新後台管理員密碼雜湊。
+    /// </summary>
+    public async Task<bool> UpdatePasswordHashAsync(long id, string passwordHash)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var affectedRows = await connection.ExecuteAsync("""
+            UPDATE admin_users
+            SET password_hash = @PasswordHash,
+                updated_at = @UpdatedAt
+            WHERE id = @Id
+              AND is_active = TRUE;
+            """, new
+        {
+            Id = id,
+            PasswordHash = passwordHash,
             UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
         });
 

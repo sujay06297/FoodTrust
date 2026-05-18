@@ -40,6 +40,20 @@ public sealed class AdminUsersController(IAdminUserService adminUserService) : C
     }
 
     /// <summary>
+    /// 修改目前登入管理員密碼。
+    /// </summary>
+    [HttpPatch("me/password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangeAdminPasswordRequest request)
+    {
+        var updated = await adminUserService.ChangePasswordAsync(
+            GetCurrentAdminUserId(),
+            request.CurrentPassword,
+            request.NewPassword);
+
+        return updated ? NoContent() : NotFound();
+    }
+
+    /// <summary>
     /// 取得目前登入管理員的使用者識別碼。
     /// </summary>
     private long GetCurrentAdminUserId()
