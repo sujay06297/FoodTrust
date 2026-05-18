@@ -35,4 +35,24 @@ public sealed class AdminAuthController(IAdminAuthService adminAuthService) : Co
 
         return result is null ? Unauthorized() : Ok(result);
     }
+
+    /// <summary>
+    /// 使用 refresh token 輪替後台 access token。
+    /// </summary>
+    [HttpPost("refresh")]
+    public async Task<ActionResult<AdminLoginResult>> Refresh([FromBody] RefreshAdminTokenRequest request)
+    {
+        var result = await adminAuthService.RefreshAsync(request.RefreshToken);
+        return result is null ? Unauthorized() : Ok(result);
+    }
+
+    /// <summary>
+    /// 撤銷後台 refresh token。
+    /// </summary>
+    [HttpPost("revoke")]
+    public async Task<IActionResult> Revoke([FromBody] RevokeAdminRefreshTokenRequest request)
+    {
+        var revoked = await adminAuthService.RevokeRefreshTokenAsync(request.RefreshToken);
+        return revoked ? NoContent() : NotFound();
+    }
 }

@@ -243,6 +243,24 @@ public static class DatabaseMigrations
                 CONSTRAINT fk_favorite_restaurants_restaurant
                     FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+            """),
+        new DatabaseMigration(
+            202605180002,
+            "Add admin refresh tokens",
+            """
+            CREATE TABLE IF NOT EXISTS admin_refresh_tokens (
+                id BIGINT NOT NULL AUTO_INCREMENT,
+                admin_user_id BIGINT NOT NULL,
+                token_hash CHAR(64) NOT NULL,
+                expires_at DATETIME(6) NOT NULL,
+                revoked_at DATETIME(6) NULL,
+                created_at DATETIME(6) NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ux_admin_refresh_tokens_hash UNIQUE (token_hash),
+                INDEX ix_admin_refresh_tokens_admin (admin_user_id, expires_at),
+                CONSTRAINT fk_admin_refresh_tokens_admin
+                    FOREIGN KEY (admin_user_id) REFERENCES admin_users(id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
             """)
     ];
 }

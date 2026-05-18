@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddSingleton<DatabaseInitializer>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddScoped<IAdminUserRepository, DapperAdminUserRepository>();
+        services.AddScoped<IAdminRefreshTokenRepository, DapperAdminRefreshTokenRepository>();
         services.AddScoped<IUserRepository, DapperUserRepository>();
         services.AddScoped<IRestaurantRepository, DapperRestaurantRepository>();
         services.AddScoped<IRestaurantImportTargetRepository, DapperRestaurantRepository>();
