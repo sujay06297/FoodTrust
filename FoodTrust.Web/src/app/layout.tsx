@@ -3,8 +3,23 @@ import { SiteHeader } from "@/components/layout/site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FoodTrust 食信",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  title: {
+    default: "FoodTrust 食信",
+    template: "%s | FoodTrust 食信",
+  },
   description: "可信賴的美食排行與餐廳評價平台",
+  openGraph: {
+    title: "FoodTrust 食信",
+    description: "可信賴的美食排行與餐廳評價平台",
+    locale: "zh_TW",
+    siteName: "FoodTrust 食信",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

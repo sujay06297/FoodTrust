@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
 import { FavoritesClient } from "./favorites-client";
+
+export const metadata: Metadata = {
+  title: "我的收藏",
+  description: "查看 FoodTrust 食信會員已收藏的餐廳清單。",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function FavoritesPage() {
   return (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FavoriteButton } from "@/components/restaurants/favorite-button";
 import { ReviewForm } from "@/components/restaurants/review-form";
 import { getRestaurant, getRestaurantReviews } from "@/lib/api/restaurants";
@@ -5,6 +6,33 @@ import { getRestaurant, getRestaurantReviews } from "@/lib/api/restaurants";
 type PageProps = {
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const restaurant = await getRestaurant(id).catch(() => null);
+
+  if (!restaurant) {
+    return {
+      title: "餐廳資料",
+      description: "查看 FoodTrust 食信餐廳資料與會員評論。",
+    };
+  }
+
+  const title = `${restaurant.name}${restaurant.branchName ? ` ${restaurant.branchName}` : ""}`;
+  const description = [restaurant.cuisineType, restaurant.city, restaurant.district, restaurant.address]
+    .filter(Boolean)
+    .join(" | ");
+
+  return {
+    title,
+    description: description || "查看 FoodTrust 食信餐廳資料與會員評論。",
+    openGraph: {
+      title,
+      description: description || "查看 FoodTrust 食信餐廳資料與會員評論。",
+      type: "article",
+    },
+  };
+}
 
 export default async function RestaurantDetailPage({ params }: PageProps) {
   const { id } = await params;
@@ -48,6 +76,30 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
         </div>
         {restaurant.description ? (
           <p className="mt-4 whitespace-pre-line text-sm leading-6 text-zinc-700">{restaurant.description}</p>
+        ) : null}
+        {restaurant.officialUrl || restaurant.googleMapUrl ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {restaurant.officialUrl ? (
+              <a
+                className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                href={restaurant.officialUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                官方網站
+              </a>
+            ) : null}
+            {restaurant.googleMapUrl ? (
+              <a
+                className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                href={restaurant.googleMapUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Google 地圖
+              </a>
+            ) : null}
+          </div>
         ) : null}
       </section>
 

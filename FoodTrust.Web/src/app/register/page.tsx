@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { AuthForm } from "@/components/auth/auth-form";
+
+export const metadata: Metadata = {
+  title: "註冊會員",
+  description: "建立 FoodTrust 食信會員帳號，收藏餐廳並參與可信賴的餐廳評價。",
+};
 
 export default function RegisterPage() {
   return (

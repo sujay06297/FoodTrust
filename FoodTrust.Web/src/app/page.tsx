@@ -1,8 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { RestaurantCard } from "@/components/restaurants/restaurant-card";
 import { RestaurantSearchForm } from "@/components/restaurants/restaurant-search-form";
 import { getRestaurantRankings } from "@/lib/api/restaurants";
 import type { RestaurantRankingItem } from "@/lib/api/types";
+
+export const metadata: Metadata = {
+  title: "可信賴的美食排行",
+  description: "依平台分數、有效評論與收藏訊號探索可信賴的餐廳排行。",
+};
 
 export default async function Home() {
   let rankings: RestaurantRankingItem[] = [];

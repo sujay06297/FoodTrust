@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { RestaurantCard } from "@/components/restaurants/restaurant-card";
 import { Pagination } from "@/components/restaurants/pagination";
 import { RestaurantSearchForm } from "@/components/restaurants/restaurant-search-form";
@@ -5,6 +6,11 @@ import { searchRestaurants, type RestaurantSearchParams } from "@/lib/api/restau
 
 type PageProps = {
   searchParams: Promise<RestaurantSearchParams>;
+};
+
+export const metadata: Metadata = {
+  title: "餐廳搜尋",
+  description: "用地區、料理、價位與評分排序搜尋 FoodTrust 餐廳資料。",
 };
 
 export default async function RestaurantsPage({ searchParams }: PageProps) {
