@@ -1,6 +1,7 @@
 namespace FoodTrust.Core.Restaurants.Models;
 
 public sealed record CreateRestaurantReviewCommand(
+    long UserId,
     decimal TasteScore,
     decimal ServiceScore,
     decimal EnvironmentScore,

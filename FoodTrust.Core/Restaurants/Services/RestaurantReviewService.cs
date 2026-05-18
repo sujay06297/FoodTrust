@@ -23,6 +23,11 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
     /// </summary>
     public Task<bool> AddRestaurantReviewAsync(long id, CreateRestaurantReviewCommand command)
     {
+        if (command.UserId <= 0)
+        {
+            throw new ArgumentException("Restaurant review user identifier is required.", nameof(command.UserId));
+        }
+
         ValidateScore(command.TasteScore, nameof(command.TasteScore));
         ValidateScore(command.ServiceScore, nameof(command.ServiceScore));
         ValidateScore(command.EnvironmentScore, nameof(command.EnvironmentScore));
@@ -39,7 +44,22 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
             throw new ArgumentException("Price per person cannot be negative.", nameof(command.PricePerPerson));
         }
 
-        return repository.AddRestaurantReviewAsync(id, command);
+        return AddRestaurantReviewCoreAsync(id, command);
+    }
+
+    /// <summary>
+    /// 檢查會員評論頻率並新增完整餐廳評論。
+    /// </summary>
+    private async Task<bool> AddRestaurantReviewCoreAsync(long id, CreateRestaurantReviewCommand command)
+    {
+        var sinceUtc = DateTimeOffset.UtcNow.AddDays(-30).UtcDateTime;
+        var hasRecentReview = await repository.HasUserReviewedRestaurantSinceAsync(id, command.UserId, sinceUtc);
+        if (hasRecentReview)
+        {
+            throw new ArgumentException("User can only review the same restaurant once within 30 days.", nameof(command.UserId));
+        }
+
+        return await repository.AddRestaurantReviewAsync(id, command);
     }
 
     /// <summary>

@@ -23,7 +23,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = adminJwtOptions.Issuer,
+            ValidIssuers = [adminJwtOptions.Issuer, userJwtOptions.Issuer],
             ValidateAudience = true,
             ValidAudiences = [adminJwtOptions.Audience, userJwtOptions.Audience],
             ValidateIssuerSigningKey = true,

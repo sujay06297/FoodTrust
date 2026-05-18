@@ -15,6 +15,11 @@ public interface IRestaurantReviewRepository
     Task<bool> AddRestaurantReviewAsync(long id, CreateRestaurantReviewCommand command);
 
     /// <summary>
+    /// 判斷會員近期是否已評論同一間餐廳。
+    /// </summary>
+    Task<bool> HasUserReviewedRestaurantSinceAsync(long restaurantId, long userId, DateTime sinceUtc);
+
+    /// <summary>
     /// 取得餐廳已核准的公開評論。
     /// </summary>
     Task<IReadOnlyList<RestaurantReviewListItem>> GetRestaurantReviewsAsync(long id, int limit);

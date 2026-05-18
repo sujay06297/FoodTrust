@@ -46,6 +46,7 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         await connection.ExecuteAsync("""
             INSERT INTO restaurant_reviews (
                 restaurant_id,
+                user_id,
                 taste_score,
                 service_score,
                 environment_score,
@@ -145,6 +146,7 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             )
             VALUES (
                 @RestaurantId,
+                @UserId,
                 @TasteScore,
                 @ServiceScore,
                 @EnvironmentScore,
@@ -167,6 +169,7 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
             """, new
         {
             RestaurantId = id,
+            command.UserId,
             command.TasteScore,
             command.ServiceScore,
             command.EnvironmentScore,
@@ -187,6 +190,31 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
         });
 
         return true;
+    }
+
+    /// <summary>
+    /// 判斷會員近期是否已評論同一間餐廳。
+    /// </summary>
+    public async Task<bool> HasUserReviewedRestaurantSinceAsync(long restaurantId, long userId, DateTime sinceUtc)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        return await connection.ExecuteScalarAsync<bool>("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM restaurant_reviews
+                WHERE restaurant_id = @RestaurantId
+                  AND user_id = @UserId
+                  AND created_at >= @SinceUtc
+                  AND is_deleted = FALSE
+            );
+            """, new
+        {
+            RestaurantId = restaurantId,
+            UserId = userId,
+            SinceUtc = sinceUtc
+        });
     }
 
     /// <summary>
