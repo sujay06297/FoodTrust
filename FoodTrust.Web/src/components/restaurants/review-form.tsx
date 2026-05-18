@@ -1,10 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createReview } from "@/lib/api/restaurants";
 import { getAccessToken } from "@/lib/auth/token-store";
 
 export function ReviewForm({ restaurantId }: { restaurantId: number }) {
+  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,6 +34,7 @@ export function ReviewForm({ restaurantId }: { restaurantId: number }) {
       });
       event.currentTarget.reset();
       setMessage("評論已送出。");
+      router.refresh();
     } catch {
       setMessage("評論送出失敗，請確認內容至少 30 字且 30 天內未重複評論。");
     } finally {

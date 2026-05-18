@@ -1,4 +1,5 @@
 import { RestaurantCard } from "@/components/restaurants/restaurant-card";
+import { Pagination } from "@/components/restaurants/pagination";
 import { RestaurantSearchForm } from "@/components/restaurants/restaurant-search-form";
 import { searchRestaurants, type RestaurantSearchParams } from "@/lib/api/restaurants";
 
@@ -34,6 +35,14 @@ export default async function RestaurantsPage({ searchParams }: PageProps) {
             ))}
             {result.items.length === 0 ? (
               <p className="p-4 text-sm text-zinc-600">沒有符合條件的餐廳。</p>
+            ) : null}
+            {result.totalCount > result.pageSize ? (
+              <Pagination
+                page={result.page}
+                pageSize={result.pageSize}
+                totalCount={result.totalCount}
+                searchParams={params}
+              />
             ) : null}
           </>
         ) : (

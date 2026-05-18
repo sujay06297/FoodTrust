@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthStatus } from "@/components/auth/auth-status";
 
 export function SiteHeader() {
   return (
@@ -14,9 +15,7 @@ export function SiteHeader() {
           <Link className="rounded-md px-3 py-2 text-zinc-700 hover:bg-zinc-100" href="/me/favorites">
             收藏
           </Link>
-          <Link className="rounded-md px-3 py-2 text-zinc-700 hover:bg-zinc-100" href="/login">
-            登入
-          </Link>
+          <AuthStatus />
         </nav>
       </div>
     </header>
