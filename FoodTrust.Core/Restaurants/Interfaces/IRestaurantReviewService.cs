@@ -54,6 +54,12 @@ public interface IRestaurantReviewService
     Task<IReadOnlyList<AdminReviewModerationLogListItem>> GetReviewModerationLogsAsync(long id, int limit);
 
     /// <summary>
+    /// 搜尋後台審核紀錄。
+    /// </summary>
+    Task<AdminReviewModerationLogSearchResult> SearchReviewModerationLogsAsync(
+        AdminReviewModerationLogSearchRequest request);
+
+    /// <summary>
     /// 驗證並建立評論檢舉。
     /// </summary>
     Task<bool> CreateReviewReportAsync(long reviewId, CreateReviewReportCommand command);

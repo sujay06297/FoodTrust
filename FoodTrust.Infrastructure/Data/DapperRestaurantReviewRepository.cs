@@ -561,6 +561,69 @@ public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory conn
     }
 
     /// <summary>
+    /// 搜尋後台評論審核紀錄。
+    /// </summary>
+    public async Task<AdminReviewModerationLogSearchResult> SearchReviewModerationLogsAsync(
+        AdminReviewModerationLogSearchRequest request)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 200);
+        var offset = (page - 1) * pageSize;
+        var parameters = new
+        {
+            request.ReviewId,
+            request.AdminUserId,
+            request.Action,
+            From = request.From?.UtcDateTime,
+            To = request.To?.UtcDateTime,
+            Limit = pageSize,
+            Offset = offset
+        };
+
+        var totalCount = await connection.ExecuteScalarAsync<long>("""
+            SELECT COUNT(*)
+            FROM restaurant_review_moderation_logs l
+            WHERE (@ReviewId IS NULL OR l.review_id = @ReviewId)
+              AND (@AdminUserId IS NULL OR l.admin_user_id = @AdminUserId)
+              AND (@Action IS NULL OR l.action = @Action)
+              AND (@From IS NULL OR l.created_at >= @From)
+              AND (@To IS NULL OR l.created_at <= @To);
+            """, parameters);
+
+        var rows = await connection.QueryAsync<AdminReviewModerationLogRow>("""
+            SELECT
+                l.id,
+                l.review_id AS ReviewId,
+                l.admin_user_id AS AdminUserId,
+                a.username AS AdminUsername,
+                a.display_name AS AdminDisplayName,
+                l.action,
+                l.old_status AS OldStatus,
+                l.new_status AS NewStatus,
+                l.reason,
+                l.created_at AS CreatedAt
+            FROM restaurant_review_moderation_logs l
+            INNER JOIN admin_users a ON a.id = l.admin_user_id
+            WHERE (@ReviewId IS NULL OR l.review_id = @ReviewId)
+              AND (@AdminUserId IS NULL OR l.admin_user_id = @AdminUserId)
+              AND (@Action IS NULL OR l.action = @Action)
+              AND (@From IS NULL OR l.created_at >= @From)
+              AND (@To IS NULL OR l.created_at <= @To)
+            ORDER BY l.created_at DESC, l.id DESC
+            LIMIT @Limit OFFSET @Offset;
+            """, parameters);
+
+        return new AdminReviewModerationLogSearchResult(
+            rows.Select(ToModerationLogListItem).ToArray(),
+            totalCount,
+            page,
+            pageSize);
+    }
+
+    /// <summary>
     /// 建立評論檢舉。
     /// </summary>
     public async Task<bool> CreateReviewReportAsync(long reviewId, CreateReviewReportCommand command)

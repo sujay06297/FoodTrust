@@ -165,6 +165,42 @@ public sealed class RestaurantReviewService(IRestaurantReviewRepository reposito
     }
 
     /// <summary>
+    /// 驗證條件並搜尋後台審核紀錄。
+    /// </summary>
+    public Task<AdminReviewModerationLogSearchResult> SearchReviewModerationLogsAsync(
+        AdminReviewModerationLogSearchRequest request)
+    {
+        if (request.ReviewId is <= 0)
+        {
+            throw new ArgumentException("Review identifier must be positive.", nameof(request.ReviewId));
+        }
+
+        if (request.AdminUserId is <= 0)
+        {
+            throw new ArgumentException("Admin user identifier must be positive.", nameof(request.AdminUserId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Action) && !ReviewModerationAction.IsValid(request.Action.Trim()))
+        {
+            throw new ArgumentException("Invalid review moderation action.", nameof(request.Action));
+        }
+
+        if (request.From is not null && request.To is not null && request.From > request.To)
+        {
+            throw new ArgumentException("Moderation log search start time cannot be greater than end time.");
+        }
+
+        var normalizedRequest = request with
+        {
+            Action = string.IsNullOrWhiteSpace(request.Action) ? null : request.Action.Trim(),
+            Page = Math.Max(1, request.Page),
+            PageSize = Math.Clamp(request.PageSize, 1, 200)
+        };
+
+        return repository.SearchReviewModerationLogsAsync(normalizedRequest);
+    }
+
+    /// <summary>
     /// 驗證並建立評論檢舉。
     /// </summary>
     public Task<bool> CreateReviewReportAsync(long reviewId, CreateReviewReportCommand command)

@@ -106,6 +106,32 @@ public sealed class AdminRestaurantReviewsController(IRestaurantReviewService re
     }
 
     /// <summary>
+    /// 搜尋後台評論審核紀錄。
+    /// </summary>
+    [HttpGet("moderation-logs")]
+    public async Task<ActionResult<AdminReviewModerationLogSearchResult>> SearchModerationLogs(
+        [FromQuery] long? reviewId,
+        [FromQuery] long? adminUserId,
+        [FromQuery] string? action,
+        [FromQuery] DateTimeOffset? from,
+        [FromQuery] DateTimeOffset? to,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize)
+    {
+        var request = new AdminReviewModerationLogSearchRequest(
+            reviewId,
+            adminUserId,
+            action,
+            from,
+            to,
+            page ?? 1,
+            pageSize ?? 20);
+        var result = await reviewService.SearchReviewModerationLogsAsync(request);
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// 取得目前登入管理員的使用者識別碼。
     /// </summary>
     private long GetCurrentAdminUserId()
