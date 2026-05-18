@@ -35,10 +35,26 @@ npm run dev
 
 ```bash
 npm run lint
+npm run typecheck
 npm run build
 ```
 
-`npm run build` 會檢查 TypeScript、產生 Next.js production build，並確認 `/robots.txt` 與 `/sitemap.xml` route 可輸出。
+也可以一次執行完整前端驗證：
+
+```bash
+npm run verify
+```
+
+`npm run typecheck` 會執行 TypeScript 型別檢查。`npm run build` 會產生 Next.js production build，並確認 `/robots.txt` 與 `/sitemap.xml` route 可輸出。
+
+## CI
+
+`.github/workflows/foodtrust-web-ci.yml` 會在前端檔案或 workflow 變更時執行：
+
+- `npm ci`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run build`
 
 ## 部署
 

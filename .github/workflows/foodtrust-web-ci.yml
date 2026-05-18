@@ -1,0 +1,43 @@
+name: FoodTrust Web CI
+
+on:
+  push:
+    paths:
+      - "FoodTrust.Web/**"
+      - ".github/workflows/foodtrust-web-ci.yml"
+  pull_request:
+    paths:
+      - "FoodTrust.Web/**"
+      - ".github/workflows/foodtrust-web-ci.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: FoodTrust.Web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: FoodTrust.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:5000
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
