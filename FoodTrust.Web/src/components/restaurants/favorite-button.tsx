@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addFavorite, removeFavorite } from "@/lib/api/restaurants";
+import { getApiErrorMessage } from "@/lib/api/client";
 import {
   isFavoriteRestaurant,
   markFavoriteRestaurant,
@@ -39,8 +40,8 @@ export function FavoriteButton({ restaurantId }: { restaurantId: number }) {
         setMessage("已加入收藏。");
       }
       router.refresh();
-    } catch {
-      setMessage("操作失敗，請稍後再試。");
+    } catch (error) {
+      setMessage(getApiErrorMessage(error, "操作失敗，請稍後再試。"));
     } finally {
       setLoading(false);
     }

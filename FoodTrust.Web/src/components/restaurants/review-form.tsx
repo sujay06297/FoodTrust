@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { createReview } from "@/lib/api/restaurants";
 import { getAccessToken } from "@/lib/auth/token-store";
 
@@ -35,8 +36,8 @@ export function ReviewForm({ restaurantId }: { restaurantId: number }) {
       event.currentTarget.reset();
       setMessage("評論已送出。");
       router.refresh();
-    } catch {
-      setMessage("評論送出失敗，請確認內容至少 30 字且 30 天內未重複評論。");
+    } catch (error) {
+      setMessage(getApiErrorMessage(error, "評論送出失敗，請確認內容至少 30 字且 30 天內未重複評論。"));
     } finally {
       setLoading(false);
     }

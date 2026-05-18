@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { getMyFavorites } from "@/lib/api/restaurants";
 import type { FavoriteRestaurantSearchResult } from "@/lib/api/types";
 import { rememberFavoriteRestaurants } from "@/lib/auth/favorite-store";
@@ -24,7 +25,7 @@ export function FavoritesClient() {
         setResult(data);
         setMessage("");
       })
-      .catch(() => setMessage("無法載入收藏。"));
+      .catch((error) => setMessage(getApiErrorMessage(error, "無法載入收藏。")));
   }, []);
 
   if (message) {

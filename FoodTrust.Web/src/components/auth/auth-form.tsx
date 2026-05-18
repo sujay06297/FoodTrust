@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { login, register } from "@/lib/api/auth";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { saveAuth } from "@/lib/auth/token-store";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
@@ -27,8 +28,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           : await register(email, password, displayName);
       saveAuth(result);
       router.push("/restaurants");
-    } catch {
-      setError(mode === "login" ? "登入失敗，請確認帳密。" : "註冊失敗，請確認資料。");
+    } catch (error) {
+      setError(
+        getApiErrorMessage(
+          error,
+          mode === "login" ? "登入失敗，請確認帳密。" : "註冊失敗，請確認資料。",
+        ),
+      );
     } finally {
       setLoading(false);
     }

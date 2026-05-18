@@ -7,6 +7,17 @@ type RequestOptions = RequestInit & {
   token?: string | null;
 };
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
@@ -26,7 +37,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    const details = await readErrorDetails(response);
+    throw new ApiError(extractErrorMessage(details) ?? `API request failed: ${response.status}`, response.status, details);
   }
 
   if (response.status === 204) {
@@ -34,6 +46,14 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   }
 
   return (await response.json()) as T;
+}
+
+export function getApiErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    return error.message || fallback;
+  }
+
+  return fallback;
 }
 
 export function toQueryString(params: Record<string, string | number | null | undefined>) {
@@ -47,4 +67,50 @@ export function toQueryString(params: Record<string, string | number | null | un
 
   const query = search.toString();
   return query ? `?${query}` : "";
+}
+
+async function readErrorDetails(response: Response) {
+  const contentType = response.headers.get("Content-Type") ?? "";
+  if (contentType.includes("application/json")) {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
+  const text = await response.text();
+  return text || null;
+}
+
+function extractErrorMessage(details: unknown) {
+  if (!details) {
+    return null;
+  }
+
+  if (typeof details === "string") {
+    return details;
+  }
+
+  if (typeof details !== "object") {
+    return null;
+  }
+
+  const payload = details as Record<string, unknown>;
+  for (const key of ["message", "title", "detail", "error"]) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+  }
+
+  const errors = payload.errors;
+  if (errors && typeof errors === "object") {
+    const messages = Object.values(errors)
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+    return messages[0] ?? null;
+  }
+
+  return null;
 }
