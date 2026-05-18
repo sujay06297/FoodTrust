@@ -97,6 +97,74 @@ public sealed class DapperAdminUserRepository(MySqlConnectionFactory connectionF
     }
 
     /// <summary>
+    /// 查詢後台管理員列表。
+    /// </summary>
+    public async Task<AdminUserSearchResult> SearchAsync(int page, int pageSize, bool? isActive)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var offset = (page - 1) * pageSize;
+        var parameters = new
+        {
+            IsActive = isActive,
+            PageSize = pageSize,
+            Offset = offset
+        };
+
+        var totalCount = await connection.ExecuteScalarAsync<long>("""
+            SELECT COUNT(*)
+            FROM admin_users
+            WHERE (@IsActive IS NULL OR is_active = @IsActive);
+            """, parameters);
+
+        var rows = await connection.QueryAsync<AdminUserRow>("""
+            SELECT
+                id,
+                username,
+                password_hash AS PasswordHash,
+                display_name AS DisplayName,
+                role,
+                is_active AS IsActive,
+                created_at AS CreatedAt,
+                updated_at AS UpdatedAt
+            FROM admin_users
+            WHERE (@IsActive IS NULL OR is_active = @IsActive)
+            ORDER BY id DESC
+            LIMIT @PageSize OFFSET @Offset;
+            """, parameters);
+
+        return new AdminUserSearchResult(
+            rows.Select(row => ToSummary(ToAdminUser(row))).ToArray(),
+            page,
+            pageSize,
+            totalCount);
+    }
+
+    /// <summary>
+    /// 更新後台管理員啟用狀態。
+    /// </summary>
+    public async Task<bool> UpdateActiveAsync(long id, bool isActive)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var affectedRows = await connection.ExecuteAsync("""
+            UPDATE admin_users
+            SET is_active = @IsActive,
+                updated_at = @UpdatedAt
+            WHERE id = @Id;
+            """, new
+        {
+            Id = id,
+            IsActive = isActive,
+            UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
+        });
+
+        return affectedRows > 0;
+    }
+
+    /// <summary>
     /// 將資料庫時間戳視為 UTC 時間。
     /// </summary>
     private static DateTimeOffset ToUtcOffset(DateTime value)
@@ -118,6 +186,20 @@ public sealed class DapperAdminUserRepository(MySqlConnectionFactory connectionF
             row.IsActive,
             ToUtcOffset(row.CreatedAt),
             ToUtcOffset(row.UpdatedAt));
+    }
+
+    /// <summary>
+    /// 將管理員資料轉為對外回傳摘要。
+    /// </summary>
+    private static AdminUserSummary ToSummary(AdminUser user)
+    {
+        return new AdminUserSummary(
+            user.Id,
+            user.Username,
+            user.DisplayName,
+            user.Role,
+            user.IsActive,
+            user.CreatedAt);
     }
 
     private sealed record AdminUserRow(

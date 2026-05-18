@@ -28,6 +28,7 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddScoped<IAdminAuthService, AdminAuthService>();
+        services.AddScoped<IAdminUserService, AdminUserService>();
         services.AddScoped<IAdminTokenGenerator, JwtAdminTokenGenerator>();
         services.AddScoped<IUserAuthService, UserAuthService>();
         services.AddScoped<IUserTokenGenerator, JwtUserTokenGenerator>();

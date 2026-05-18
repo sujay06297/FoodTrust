@@ -18,4 +18,14 @@ public interface IAdminUserRepository
     /// 建立新的後台管理員。
     /// </summary>
     Task<AdminUser> CreateAsync(CreateAdminUserCommand command);
+
+    /// <summary>
+    /// 查詢後台管理員列表。
+    /// </summary>
+    Task<AdminUserSearchResult> SearchAsync(int page, int pageSize, bool? isActive);
+
+    /// <summary>
+    /// 更新後台管理員啟用狀態。
+    /// </summary>
+    Task<bool> UpdateActiveAsync(long id, bool isActive);
 }
