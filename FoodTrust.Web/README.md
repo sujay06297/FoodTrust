@@ -66,3 +66,22 @@ npm run verify
 - Output：Next.js 預設輸出
 
 正式環境請將 `NEXT_PUBLIC_API_BASE_URL` 指到公開 API 網址，並將 `NEXT_PUBLIC_SITE_URL` 設為前台正式網域。
+
+### AWS Amplify Hosting
+
+Repo 根目錄已提供 `amplify.yml`，Amplify 連接 GitHub monorepo 時會使用：
+
+- App root：`FoodTrust.Web`
+- Pre-build：`npm ci`
+- Build：`npm run build`
+- Artifact：`.next`
+- Cache：`node_modules`、`.next/cache`
+
+Amplify 環境變數請設定：
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=https://api.example.com
+NEXT_PUBLIC_SITE_URL=https://www.example.com
+```
+
+後端正式網址還沒建立前，`NEXT_PUBLIC_API_BASE_URL` 可先填暫時 API 網址；部署完成後再回 Amplify 修改環境變數並重新部署。
