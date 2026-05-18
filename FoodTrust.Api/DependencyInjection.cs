@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IUserTokenGenerator, JwtUserTokenGenerator>();
         services.AddScoped<IRestaurantService, RestaurantService>();
         services.AddScoped<IRestaurantReviewService, RestaurantReviewService>();
+        services.AddScoped<IRestaurantFavoriteService, RestaurantFavoriteService>();
         services.AddScoped<IRestaurantRankingService, RestaurantRankingService>();
 
         return services;

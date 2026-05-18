@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IRestaurantRepository, DapperRestaurantRepository>();
         services.AddScoped<IRestaurantImportTargetRepository, DapperRestaurantRepository>();
         services.AddScoped<IRestaurantReviewRepository, DapperRestaurantReviewRepository>();
+        services.AddScoped<IRestaurantFavoriteRepository, DapperRestaurantFavoriteRepository>();
         services.AddScoped<IRestaurantRankingRepository, DapperRestaurantRankingRepository>();
         services.AddScoped<IRestaurantImportRunRepository, DapperRestaurantImportRunRepository>();
         services.AddScoped<IRestaurantImportService, RestaurantImportService>();

@@ -226,6 +226,23 @@ public static class DatabaseMigrations
 
             CREATE INDEX ix_restaurant_reviews_user
                 ON restaurant_reviews (user_id, created_at);
+            """),
+        new DatabaseMigration(
+            202605180001,
+            "Add favorite restaurants",
+            """
+            CREATE TABLE IF NOT EXISTS favorite_restaurants (
+                user_id BIGINT NOT NULL,
+                restaurant_id BIGINT NOT NULL,
+                created_at DATETIME(6) NOT NULL,
+                PRIMARY KEY (user_id, restaurant_id),
+                INDEX ix_favorite_restaurants_restaurant (restaurant_id, created_at),
+                INDEX ix_favorite_restaurants_user_created (user_id, created_at),
+                CONSTRAINT fk_favorite_restaurants_user
+                    FOREIGN KEY (user_id) REFERENCES users(id),
+                CONSTRAINT fk_favorite_restaurants_restaurant
+                    FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
             """)
     ];
 }
