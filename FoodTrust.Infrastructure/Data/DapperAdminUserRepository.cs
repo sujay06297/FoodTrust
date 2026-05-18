@@ -190,6 +190,29 @@ public sealed class DapperAdminUserRepository(MySqlConnectionFactory connectionF
     }
 
     /// <summary>
+    /// 更新後台管理員角色。
+    /// </summary>
+    public async Task<bool> UpdateRoleAsync(long id, string role)
+    {
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+
+        var affectedRows = await connection.ExecuteAsync("""
+            UPDATE admin_users
+            SET role = @Role,
+                updated_at = @UpdatedAt
+            WHERE id = @Id;
+            """, new
+        {
+            Id = id,
+            Role = role,
+            UpdatedAt = DateTimeOffset.UtcNow.UtcDateTime
+        });
+
+        return affectedRows > 0;
+    }
+
+    /// <summary>
     /// 更新後台管理員密碼雜湊。
     /// </summary>
     public async Task<bool> UpdatePasswordHashAsync(long id, string passwordHash)

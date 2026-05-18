@@ -42,6 +42,34 @@ public sealed class AdminUserService(
     }
 
     /// <summary>
+    /// 驗證並更新後台管理員角色。
+    /// </summary>
+    public Task<bool> UpdateRoleAsync(long id, string role, long currentAdminUserId)
+    {
+        if (id <= 0)
+        {
+            throw new ArgumentException("Admin user identifier is required.", nameof(id));
+        }
+
+        if (currentAdminUserId <= 0)
+        {
+            throw new ArgumentException("Current admin user identifier is required.", nameof(currentAdminUserId));
+        }
+
+        if (!AdminRole.IsValid(role))
+        {
+            throw new ArgumentException("Invalid admin role.", nameof(role));
+        }
+
+        if (id == currentAdminUserId && role != AdminRole.Admin)
+        {
+            throw new ArgumentException("Admin user cannot downgrade the current signed-in account.", nameof(id));
+        }
+
+        return repository.UpdateRoleAsync(id, role);
+    }
+
+    /// <summary>
     /// 驗證目前密碼並更新登入管理員密碼。
     /// </summary>
     public async Task<bool> ChangePasswordAsync(long currentAdminUserId, string currentPassword, string newPassword)

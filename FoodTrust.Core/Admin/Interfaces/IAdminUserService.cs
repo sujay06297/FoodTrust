@@ -15,6 +15,11 @@ public interface IAdminUserService
     Task<bool> UpdateActiveAsync(long id, bool isActive, long currentAdminUserId);
 
     /// <summary>
+    /// 更新後台管理員角色。
+    /// </summary>
+    Task<bool> UpdateRoleAsync(long id, string role, long currentAdminUserId);
+
+    /// <summary>
     /// 修改目前登入管理員密碼。
     /// </summary>
     Task<bool> ChangePasswordAsync(long currentAdminUserId, string currentPassword, string newPassword);

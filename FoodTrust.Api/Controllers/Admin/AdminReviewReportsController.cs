@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FoodTrust.Api.Models.Admin;
+using FoodTrust.Api.Security;
 using FoodTrust.Core.Admin.Models;
 using FoodTrust.Core.Restaurants.Interfaces;
 using FoodTrust.Core.Restaurants.Models;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FoodTrust.Api.Controllers.Admin;
 
 [ApiController]
-[Authorize(Roles = AdminRole.Admin)]
+[Authorize(Policy = AdminPolicies.ReviewModeration)]
 [Route("api/v1/admin/review-reports")]
 public sealed class AdminReviewReportsController(IRestaurantReviewService reviewService) : ControllerBase
 {

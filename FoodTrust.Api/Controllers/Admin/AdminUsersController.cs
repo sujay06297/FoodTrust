@@ -40,6 +40,20 @@ public sealed class AdminUsersController(IAdminUserService adminUserService) : C
     }
 
     /// <summary>
+    /// 更新後台管理員角色。
+    /// </summary>
+    [HttpPatch("{id:long}/role")]
+    public async Task<IActionResult> UpdateRole(long id, [FromBody] UpdateAdminUserRoleRequest request)
+    {
+        var updated = await adminUserService.UpdateRoleAsync(
+            id,
+            request.Role,
+            GetCurrentAdminUserId());
+
+        return updated ? NoContent() : NotFound();
+    }
+
+    /// <summary>
     /// 修改目前登入管理員密碼。
     /// </summary>
     [HttpPatch("me/password")]

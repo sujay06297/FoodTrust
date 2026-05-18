@@ -35,6 +35,11 @@ public interface IAdminUserRepository
     Task<bool> UpdateActiveAsync(long id, bool isActive);
 
     /// <summary>
+    /// 更新後台管理員角色。
+    /// </summary>
+    Task<bool> UpdateRoleAsync(long id, string role);
+
+    /// <summary>
     /// 更新後台管理員密碼雜湊。
     /// </summary>
     Task<bool> UpdatePasswordHashAsync(long id, string passwordHash);

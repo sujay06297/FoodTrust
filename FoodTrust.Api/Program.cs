@@ -1,6 +1,8 @@
 using FoodTrust.Api;
 using FoodTrust.Api.Filters;
 using FoodTrust.Api.Options;
+using FoodTrust.Api.Security;
+using FoodTrust.Core.Admin.Models;
 using FoodTrust.Infrastructure;
 using FoodTrust.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -36,7 +38,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.FromMinutes(2)
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(
+        AdminPolicies.ReviewModeration,
+        policy => policy.RequireRole(AdminRole.Admin, AdminRole.ReviewModerator));
+});
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ArgumentExceptionFilter>();
