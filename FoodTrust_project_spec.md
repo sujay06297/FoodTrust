@@ -717,7 +717,7 @@ cc46d92 新增評論檢舉流程；ae72ee9 新增後台評論審核紀錄；74c9
 
 1. 產品功能後續：照片上傳、地圖/距離搜尋、Typesense、Redis、Next.js 前台、SEO 頁面、商家認領。
 
-2. 前端 MVP 後續：已完成，目前可進入 AWS Amplify 前端實際部署、端到端測試與後端雲端化。
+2. 前端 MVP 後續：已完成，前端改以 Vercel 為部署目標；後端 API 規劃改放 Google Cloud Run，資料庫規劃改用 TiDB Cloud Starter。
 
 3. 產品功能後續：照片上傳、地圖/距離搜尋、Typesense、Redis、Next.js 前台、SEO 頁面、商家認領。
 
@@ -768,4 +768,24 @@ cc46d92 新增評論檢舉流程；ae72ee9 新增後台評論審核紀錄；74c9
 - 後續維運規則：每次新增 AWS 服務，都要在本規格書記錄服務名稱、區域、用途、是否必要、刪除方式與可能費用來源。若只是短期測試，測試完成後要在 Billing > Bills / Cost Explorer 確認沒有殘留費用。
 
 - 目前建議：若前端改放其他平台或只保留本機開發，先刪 Amplify App，再檢查 S3、Secrets Manager、Glue 是否有實際資源；確認沒有資源後保留 10 USD 預算警示作為防呆。
+
+## 新雲端部署決策（2026-06-10）
+
+- 部署方向：前端不再放 AWS Amplify，改以低成本、可逐步擴充的 serverless 方案為主。
+
+- 前端部署：`FoodTrust.Web` 規劃部署至 Vercel Hobby。理由是 Next.js 支援完整、部署流程簡單，且前端低流量階段成本較容易控制。
+
+- API 部署：`FoodTrust.Api` 規劃部署至 Google Cloud Run。理由是可用 Docker 部署 ASP.NET Core API、支援 scale to zero、低流量時成本較低，且朋友已有 Cloud Run 部署經驗可參考。
+
+- Worker 部署：`FoodTrust.Worker` 規劃改以 Cloud Run Jobs 或等效排程工作執行。理由是匯入/批次工作不需要長時間常駐，適合用 job 型態降低閒置成本。
+
+- 資料庫部署：資料庫規劃使用 TiDB Cloud Starter。理由是目前專案偏 MySQL 架構，TiDB 提供 MySQL 相容介面，較 Supabase / Neon 這類 PostgreSQL 平台需要的程式改動少，且 Starter 免費額度適合 MVP 階段。
+
+- 暫不採用：Supabase 作為第一階段 DB。Supabase 本身可用，但它是 PostgreSQL，若採用需調整 NuGet driver、connection string、migration SQL、AUTO_INCREMENT、日期/布林型別與 repository 查詢語法。除非後續決定轉 PostgreSQL，否則先不列為首選。
+
+- 暫不採用：Google Cloud SQL / Azure MySQL 作為第一階段 DB。兩者穩定但較容易產生固定費或免費期限到期成本，與目前「便宜優先」目標不完全一致。
+
+- 成本控制規則：Cloud Run API 應設定 min instances = 0、max instances 先設 1、低 CPU/Memory 起步，並建立 GCP budget alert。TiDB Cloud 需設定用量提醒，避免超過免費額度後未察覺。
+
+- 後續實作項目：新增 `FoodTrust.Api` Dockerfile、規劃 `FoodTrust.Worker` job 部署方式、補 Cloud Run / TiDB 部署文件、整理正式環境變數清單，並確認 migration 可在 TiDB Cloud Starter 正常執行。
 
