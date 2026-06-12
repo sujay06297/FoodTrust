@@ -16,9 +16,21 @@ var adminJwtOptions = builder.Configuration
 var userJwtOptions = builder.Configuration
     .GetSection(UserJwtOptions.SectionName)
     .Get<UserJwtOptions>() ?? new UserJwtOptions();
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? ["http://localhost:3000", "http://127.0.0.1:3000"];
 
 builder.Services.AddFoodTrustApiServices();
 builder.Services.AddFoodTrustInfrastructure(builder.Configuration);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -61,6 +73,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

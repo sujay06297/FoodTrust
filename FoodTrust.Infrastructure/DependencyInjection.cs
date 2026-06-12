@@ -32,7 +32,8 @@ public static class DependencyInjection
         services.AddScoped<IAdminRefreshTokenRepository, DapperAdminRefreshTokenRepository>();
         services.AddScoped<IUserRepository, DapperUserRepository>();
         services.AddScoped<IRestaurantRepository, DapperRestaurantRepository>();
-        services.AddScoped<IRestaurantImportTargetRepository, DapperRestaurantRepository>();
+        services.AddScoped<ICandidateRestaurantRepository, DapperCandidateRestaurantRepository>();
+        services.AddScoped<IRestaurantImportTargetRepository, DapperCandidateRestaurantRepository>();
         services.AddScoped<IRestaurantReviewRepository, DapperRestaurantReviewRepository>();
         services.AddScoped<IRestaurantFavoriteRepository, DapperRestaurantFavoriteRepository>();
         services.AddScoped<IRestaurantRankingRepository, DapperRestaurantRankingRepository>();

@@ -1,5 +1,4 @@
 using Dapper;
-using FoodTrust.Core.RestaurantImports.Interfaces;
 using FoodTrust.Core.RestaurantImports.Models;
 using FoodTrust.Core.Restaurants.Interfaces;
 using FoodTrust.Core.Restaurants.Models;
@@ -7,8 +6,7 @@ using FoodTrust.Core.Restaurants.Models;
 namespace FoodTrust.Infrastructure.Data;
 
 public sealed class DapperRestaurantRepository(MySqlConnectionFactory connectionFactory) :
-    IRestaurantRepository,
-    IRestaurantImportTargetRepository
+    IRestaurantRepository
 {
     private const decimal BayesianMinimumReviewCount = 20m;
     private const decimal BayesianGlobalAverageScore = 3.6m;

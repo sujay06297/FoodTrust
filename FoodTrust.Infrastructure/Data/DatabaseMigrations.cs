@@ -110,18 +110,30 @@ public static class DatabaseMigrations
             "Add restaurant profile fields",
             """
             ALTER TABLE restaurants
-                ADD COLUMN branch_name VARCHAR(100) NULL AFTER name,
-                ADD COLUMN city VARCHAR(100) NULL AFTER phone_number,
-                ADD COLUMN district VARCHAR(100) NULL AFTER city,
-                ADD COLUMN latitude DECIMAL(10, 7) NULL AFTER district,
-                ADD COLUMN longitude DECIMAL(10, 7) NULL AFTER latitude,
-                ADD COLUMN opening_hours VARCHAR(1000) NULL AFTER longitude,
-                ADD COLUMN price_min INT NULL AFTER opening_hours,
-                ADD COLUMN price_max INT NULL AFTER price_min,
-                ADD COLUMN cuisine_type VARCHAR(100) NULL AFTER price_max,
-                ADD COLUMN tags VARCHAR(500) NULL AFTER cuisine_type,
-                ADD COLUMN description TEXT NULL AFTER tags,
-                ADD COLUMN official_url VARCHAR(500) NULL AFTER description,
+                ADD COLUMN branch_name VARCHAR(100) NULL AFTER name;
+            ALTER TABLE restaurants
+                ADD COLUMN city VARCHAR(100) NULL AFTER phone_number;
+            ALTER TABLE restaurants
+                ADD COLUMN district VARCHAR(100) NULL AFTER city;
+            ALTER TABLE restaurants
+                ADD COLUMN latitude DECIMAL(10, 7) NULL AFTER district;
+            ALTER TABLE restaurants
+                ADD COLUMN longitude DECIMAL(10, 7) NULL AFTER latitude;
+            ALTER TABLE restaurants
+                ADD COLUMN opening_hours VARCHAR(1000) NULL AFTER longitude;
+            ALTER TABLE restaurants
+                ADD COLUMN price_min INT NULL AFTER opening_hours;
+            ALTER TABLE restaurants
+                ADD COLUMN price_max INT NULL AFTER price_min;
+            ALTER TABLE restaurants
+                ADD COLUMN cuisine_type VARCHAR(100) NULL AFTER price_max;
+            ALTER TABLE restaurants
+                ADD COLUMN tags VARCHAR(500) NULL AFTER cuisine_type;
+            ALTER TABLE restaurants
+                ADD COLUMN description TEXT NULL AFTER tags;
+            ALTER TABLE restaurants
+                ADD COLUMN official_url VARCHAR(500) NULL AFTER description;
+            ALTER TABLE restaurants
                 ADD COLUMN google_map_url VARCHAR(500) NULL AFTER official_url;
 
             CREATE INDEX ix_restaurants_city_district ON restaurants (city, district);
@@ -197,7 +209,8 @@ public static class DatabaseMigrations
             "Add review suspicion detection fields",
             """
             ALTER TABLE restaurant_reviews
-                ADD COLUMN suspicious_reason VARCHAR(1000) NULL AFTER is_suspicious,
+                ADD COLUMN suspicious_reason VARCHAR(1000) NULL AFTER is_suspicious;
+            ALTER TABLE restaurant_reviews
                 ADD COLUMN suspicious_detected_at DATETIME(6) NULL AFTER suspicious_reason;
 
             CREATE INDEX ix_restaurant_reviews_suspicious
@@ -220,7 +233,8 @@ public static class DatabaseMigrations
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
             ALTER TABLE restaurant_reviews
-                ADD COLUMN user_id BIGINT NULL AFTER restaurant_id,
+                ADD COLUMN user_id BIGINT NULL AFTER restaurant_id;
+            ALTER TABLE restaurant_reviews
                 ADD CONSTRAINT fk_restaurant_reviews_user
                     FOREIGN KEY (user_id) REFERENCES users(id);
 
@@ -260,6 +274,31 @@ public static class DatabaseMigrations
                 INDEX ix_admin_refresh_tokens_admin (admin_user_id, expires_at),
                 CONSTRAINT fk_admin_refresh_tokens_admin
                     FOREIGN KEY (admin_user_id) REFERENCES admin_users(id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+            """),
+        new DatabaseMigration(
+            202606110001,
+            "Add candidate restaurants",
+            """
+            CREATE TABLE IF NOT EXISTS candidate_restaurants (
+                id BIGINT NOT NULL AUTO_INCREMENT,
+                source_system VARCHAR(100) NOT NULL,
+                source_key VARCHAR(128) NOT NULL,
+                raw_name VARCHAR(255) NOT NULL,
+                raw_address VARCHAR(500) NOT NULL,
+                raw_phone_number VARCHAR(50) NULL,
+                suggested_name VARCHAR(255) NULL,
+                raw_payload LONGTEXT NULL,
+                status VARCHAR(50) NOT NULL,
+                linked_restaurant_id BIGINT NULL,
+                created_at DATETIME(6) NOT NULL,
+                updated_at DATETIME(6) NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ux_candidate_restaurants_source UNIQUE (source_system, source_key),
+                INDEX ix_candidate_restaurants_status_updated (status, updated_at),
+                INDEX ix_candidate_restaurants_name (raw_name),
+                CONSTRAINT fk_candidate_restaurants_restaurant
+                    FOREIGN KEY (linked_restaurant_id) REFERENCES restaurants(id)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
             """)
     ];

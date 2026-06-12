@@ -1,7 +1,6 @@
-const defaultApiBaseUrl = "http://localhost:5000";
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 
-export const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? defaultApiBaseUrl;
+export const apiBaseUrl = configuredApiBaseUrl?.replace(/\/$/, "") ?? "";
 
 type RequestOptions = RequestInit & {
   token?: string | null;
@@ -19,6 +18,10 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  if (!apiBaseUrl) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured.");
+  }
+
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
 

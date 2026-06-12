@@ -1,0 +1,12 @@
+.git
+.github
+.vs
+**/bin
+**/obj
+**/.next
+**/node_modules
+**/*.user
+**/*.log
+**/appsettings.Development.json
+FoodTrust.Web
+certs

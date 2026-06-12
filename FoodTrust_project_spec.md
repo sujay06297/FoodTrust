@@ -789,3 +789,19 @@ cc46d92 新增評論檢舉流程；ae72ee9 新增後台評論審核紀錄；74c9
 
 - 後續實作項目：新增 `FoodTrust.Api` Dockerfile、規劃 `FoodTrust.Worker` job 部署方式、補 Cloud Run / TiDB 部署文件、整理正式環境變數清單，並確認 migration 可在 TiDB Cloud Starter 正常執行。
 
+## TiDB / GCP 接續狀態更新（2026-06-12）
+
+- 已完成：TiDB Cloud Starter 已建立 `FoodTrust-DEV` 實例，FDA 候選資料匯入流程已可寫入 `candidate_restaurants`。
+- 已完成：匯入流程改為「先進候選表、人工審核後再寫入 restaurants」，並新增候選餐廳 API、後台頁面 `/admin/candidate-restaurants`、Approve / Reject 流程與 Google Search 按鈕。
+- 已完成：`FoodTrust.Worker` 已補 `launchSettings.json`、`appsettings*.json` 複製規則、TiDB CA / TLS / BootstrapDatabase 設定欄位，且已加回 solution。
+- 已完成：`FoodTrust.Web` API client 已改為必須明確設定 `NEXT_PUBLIC_API_BASE_URL`，不再 fallback 到本機 `localhost:5000`。
+- 已完成：新增 `FoodTrust.Api/Dockerfile`、`.dockerignore`、`.gcloudignore`、`cloudbuild.api.yaml`，可使用 Cloud Build 建置 API image。
+- 已完成：GCP 專案 `foodtrust-dev`、Artifact Registry `foodtrust`、必要 API（Cloud Run Admin、Artifact Registry、Secret Manager、Cloud Scheduler、Cloud Build）均已建立或啟用。
+- 已完成：Cloud Build 已成功將 API image 推送到 `asia-east1-docker.pkg.dev/foodtrust-dev/foodtrust/foodtrust-api:dev`。
+- 已完成：API 已補 CORS policy，預設允許 `http://localhost:3000` 與 `http://127.0.0.1:3000`。
+- 目前阻塞：Cloud Run `foodtrust-api` 首次 deploy 失敗，錯誤表面為容器未在 `PORT=8080` 上啟動；高機率根因是啟動時先執行 `DatabaseInitializer.InitializeAsync()`，但 Cloud Run 尚未提供正確的 TiDB connection string / JWT / CORS 正式設定，導致容器在 listen 前 crash。
+- 下次接續第一步：用最新版 image（含 CORS）再執行一次 `gcloud builds submit --config cloudbuild.api.yaml .`，確保 tag `foodtrust-api:dev` 為最新版本。
+- 下次接續第二步：建立 Secret Manager secrets，至少包含 TiDB connection string、AdminJwt signing key、UserJwt signing key。
+- 下次接續第三步：用 `gcloud run deploy ... --set-secrets ...` 重新部署 `foodtrust-api`，確認 Cloud Run URL 可對外提供 API。
+- 下次接續第四步：把 `FoodTrust.Web/.env.local` 的 `NEXT_PUBLIC_API_BASE_URL` 改成 Cloud Run DEV URL，驗證本機前端直接打 DEV API。
+- 下次接續第五步：評估 `FoodTrust.Worker` 改為 Cloud Run Jobs + Cloud Scheduler，取代目前長駐 worker。

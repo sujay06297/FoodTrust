@@ -2,6 +2,8 @@ using FoodTrust.Api.Options;
 using FoodTrust.Api.Security;
 using FoodTrust.Core.Admin.Interfaces;
 using FoodTrust.Core.Admin.Services;
+using FoodTrust.Core.RestaurantImports.Interfaces;
+using FoodTrust.Core.RestaurantImports.Services;
 using FoodTrust.Core.Restaurants.Interfaces;
 using FoodTrust.Core.Restaurants.Services;
 using FoodTrust.Core.Users.Interfaces;
@@ -32,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminTokenGenerator, JwtAdminTokenGenerator>();
         services.AddScoped<IUserAuthService, UserAuthService>();
         services.AddScoped<IUserTokenGenerator, JwtUserTokenGenerator>();
+        services.AddScoped<ICandidateRestaurantService, CandidateRestaurantService>();
         services.AddScoped<IRestaurantService, RestaurantService>();
         services.AddScoped<IRestaurantReviewService, RestaurantReviewService>();
         services.AddScoped<IRestaurantFavoriteService, RestaurantFavoriteService>();

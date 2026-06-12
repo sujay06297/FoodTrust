@@ -100,3 +100,24 @@ export type UserAuthResult = {
   expiresAt: string;
   user: UserSummary;
 };
+
+export type CandidateRestaurant = {
+  id: number;
+  sourceSystem: string;
+  sourceKey: string;
+  rawName: string;
+  rawAddress: string;
+  rawPhoneNumber: string | null;
+  suggestedName: string | null;
+  status: string;
+  linkedRestaurantId: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CandidateRestaurantSearchResult = {
+  items: CandidateRestaurant[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+};

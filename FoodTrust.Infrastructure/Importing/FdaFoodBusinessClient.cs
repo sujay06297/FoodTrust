@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -15,6 +16,8 @@ public sealed class FdaFoodBusinessClient(
     IOptions<RestaurantImportOptions> options,
     ILogger<FdaFoodBusinessClient> logger) : IRestaurantImportSource
 {
+    private const int MaxRedirects = 5;
+
     public string SourceSystem => "TaiwanFdaFoodBusiness";
 
     public string SourceUrl => options.Value.SourceUrl;
@@ -24,16 +27,72 @@ public sealed class FdaFoodBusinessClient(
     /// </summary>
     public async Task<IReadOnlyList<RestaurantImportRecord>> FetchRestaurantsAsync(CancellationToken cancellationToken)
     {
-        using var response = await httpClient.GetAsync(options.Value.SourceUrl, cancellationToken);
+        using var response = await GetWithRedirectsAsync(options.Value.SourceUrl, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var text = await DecodeContentAsync(content, cancellationToken);
-        var records = ParseContent(text);
+        var records = ParseContent(text, options.Value)
+            .Take(Math.Max(1, options.Value.MaxRecords))
+            .ToArray();
+        if (records.Length == 0)
+        {
+            logger.LogWarning(
+                "FDA source returned no importable records. Response preview: {ResponsePreview}",
+                BuildPreview(text));
+        }
 
-        logger.LogInformation("Fetched {Count} candidate records from Taiwan FDA food business source.", records.Count);
+        logger.LogInformation("Fetched {Count} candidate records from Taiwan FDA food business source.", records.Length);
 
         return records;
+    }
+
+    private async Task<HttpResponseMessage> GetWithRedirectsAsync(
+        string sourceUrl,
+        CancellationToken cancellationToken)
+    {
+        var requestUri = new Uri(sourceUrl, UriKind.Absolute);
+
+        for (var redirectCount = 0; redirectCount <= MaxRedirects; redirectCount++)
+        {
+            var response = await httpClient.GetAsync(requestUri, cancellationToken);
+            if (!IsRedirect(response.StatusCode))
+            {
+                return response;
+            }
+
+            var statusCode = response.StatusCode;
+            var location = response.Headers.Location;
+            response.Dispose();
+
+            if (location is null)
+            {
+                throw new HttpRequestException(
+                    $"FDA source returned {(int)statusCode} without a Location header.");
+            }
+
+            requestUri = location.IsAbsoluteUri
+                ? location
+                : new Uri(requestUri, location);
+
+            logger.LogInformation(
+                "Following FDA source redirect {RedirectCount}: {RedirectUri}",
+                redirectCount + 1,
+                requestUri);
+        }
+
+        throw new HttpRequestException(
+            $"FDA source exceeded the maximum redirect count of {MaxRedirects}.");
+    }
+
+    private static bool IsRedirect(HttpStatusCode statusCode)
+    {
+        return statusCode is
+            HttpStatusCode.MovedPermanently or
+            HttpStatusCode.Found or
+            HttpStatusCode.SeeOther or
+            HttpStatusCode.TemporaryRedirect or
+            HttpStatusCode.PermanentRedirect;
     }
 
     /// <summary>
@@ -59,18 +118,22 @@ public sealed class FdaFoodBusinessClient(
     /// <summary>
     /// 判斷來源格式並解析 JSON 或 CSV 內容。
     /// </summary>
-    private static IReadOnlyList<RestaurantImportRecord> ParseContent(string content)
+    private static IReadOnlyList<RestaurantImportRecord> ParseContent(
+        string content,
+        RestaurantImportOptions options)
     {
         var trimmed = content.TrimStart('\uFEFF', ' ', '\t', '\r', '\n');
         return trimmed.StartsWith('[') || trimmed.StartsWith('{')
-            ? ParseJson(trimmed)
-            : ParseCsv(trimmed);
+            ? ParseJson(trimmed, options)
+            : ParseCsv(trimmed, options);
     }
 
     /// <summary>
     /// 將 FDA JSON 陣列內容解析為匯入資料。
     /// </summary>
-    private static IReadOnlyList<RestaurantImportRecord> ParseJson(string json)
+    private static IReadOnlyList<RestaurantImportRecord> ParseJson(
+        string json,
+        RestaurantImportOptions options)
     {
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.ValueKind != JsonValueKind.Array)
@@ -79,25 +142,139 @@ public sealed class FdaFoodBusinessClient(
         }
 
         var records = new List<RestaurantImportRecord>();
+        var elements = document.RootElement.EnumerateArray().ToArray();
 
-        foreach (var element in document.RootElement.EnumerateArray())
+        if (TryParseJsonObjectPairsRows(elements, records, options) ||
+            TryParseJsonArrayRows(elements, records, options))
         {
-            var name = GetString(element, Field.BusinessName, Field.CompanyName, Field.RegisteredBusinessName, "Name");
-            var address = GetString(element, Field.BusinessAddress, Field.Address, "Address");
-            var registrationNo = GetString(element, Field.FoodBusinessRegistrationNo, Field.RegistrationNo, "RegisterNo");
-            var businessItem = GetString(element, Field.RegistrationItem, Field.BusinessItem, "BusinessItem");
-            var phoneNumber = GetString(element, Field.Phone, Field.ContactPhone, "Phone", "PhoneNumber");
+            return records;
+        }
 
-            AddRecord(records, name, address, registrationNo, businessItem, phoneNumber, element.GetRawText());
+        foreach (var element in elements)
+        {
+            AddRecord(records, element, options);
         }
 
         return records;
     }
 
+    private static bool TryParseJsonObjectPairsRows(
+        IReadOnlyList<JsonElement> elements,
+        ICollection<RestaurantImportRecord> records,
+        RestaurantImportOptions options)
+    {
+        if (elements.Count == 0 ||
+            elements[0].ValueKind != JsonValueKind.Array ||
+            !elements[0].EnumerateArray().Any(item => item.ValueKind == JsonValueKind.Object))
+        {
+            return false;
+        }
+
+        foreach (var element in elements)
+        {
+            if (element.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            var row = new Dictionary<string, string?>(StringComparer.Ordinal);
+            foreach (var item in element.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                foreach (var property in item.EnumerateObject())
+                {
+                    row[NormalizeHeader(property.Name)] =
+                        property.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+                            ? null
+                            : property.Value.ToString();
+                }
+            }
+
+            var name = GetString(row, Field.BusinessNameAliases);
+            var address = GetString(row, Field.AddressAliases);
+            var registrationNo = GetString(row, Field.RegistrationNoAliases);
+            var businessItem = GetString(row, Field.BusinessItemAliases);
+            var phoneNumber = GetString(row, Field.PhoneAliases);
+
+            AddRecord(records, name, address, registrationNo, businessItem, phoneNumber, element.GetRawText(), options);
+        }
+
+        return true;
+    }
+
+    private static bool TryParseJsonArrayRows(
+        IReadOnlyList<JsonElement> elements,
+        ICollection<RestaurantImportRecord> records,
+        RestaurantImportOptions options)
+    {
+        if (elements.Count == 0 ||
+            elements[0].ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        var headers = elements[0]
+            .EnumerateArray()
+            .Select(value => NormalizeHeader(value.ToString()))
+            .ToArray();
+
+        if (!ContainsKnownHeader(headers))
+        {
+            return false;
+        }
+
+        foreach (var element in elements.Skip(1))
+        {
+            if (element.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            var values = element
+                .EnumerateArray()
+                .Select(value => value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+                    ? null
+                    : value.ToString())
+                .ToArray();
+
+            var row = headers
+                .Select((header, index) => new
+                {
+                    Header = header,
+                    Value = index < values.Length ? values[index] : null
+                })
+                .Where(item => !string.IsNullOrWhiteSpace(item.Header))
+                .ToDictionary(item => item.Header, item => item.Value);
+
+            var name = GetString(row, Field.BusinessNameAliases);
+            var address = GetString(row, Field.AddressAliases);
+            var registrationNo = GetString(row, Field.RegistrationNoAliases);
+            var businessItem = GetString(row, Field.BusinessItemAliases);
+            var phoneNumber = GetString(row, Field.PhoneAliases);
+
+            AddRecord(records, name, address, registrationNo, businessItem, phoneNumber, element.GetRawText(), options);
+        }
+
+        return true;
+    }
+
+    private static bool ContainsKnownHeader(IEnumerable<string> headers)
+    {
+        var headerSet = headers.ToHashSet(StringComparer.Ordinal);
+        return Field.BusinessNameAliases.Any(headerSet.Contains) ||
+            Field.AddressAliases.Any(headerSet.Contains);
+    }
+
     /// <summary>
     /// 將 FDA CSV 內容解析為匯入資料。
     /// </summary>
-    private static IReadOnlyList<RestaurantImportRecord> ParseCsv(string csv)
+    private static IReadOnlyList<RestaurantImportRecord> ParseCsv(
+        string csv,
+        RestaurantImportOptions options)
     {
         using var reader = new StringReader(csv);
         var headerLine = reader.ReadLine();
@@ -127,13 +304,13 @@ public sealed class FdaFoodBusinessClient(
                 .Where(item => !string.IsNullOrWhiteSpace(item.Header))
                 .ToDictionary(item => item.Header, item => item.Value);
 
-            var name = GetString(row, Field.BusinessName, Field.CompanyName, Field.RegisteredBusinessName, "Name");
-            var address = GetString(row, Field.BusinessAddress, Field.Address, "Address");
-            var registrationNo = GetString(row, Field.FoodBusinessRegistrationNo, Field.RegistrationNo, "RegisterNo");
-            var businessItem = GetString(row, Field.RegistrationItem, Field.BusinessItem, "BusinessItem");
-            var phoneNumber = GetString(row, Field.Phone, Field.ContactPhone, "Phone", "PhoneNumber");
+            var name = GetString(row, Field.BusinessNameAliases);
+            var address = GetString(row, Field.AddressAliases);
+            var registrationNo = GetString(row, Field.RegistrationNoAliases);
+            var businessItem = GetString(row, Field.BusinessItemAliases);
+            var phoneNumber = GetString(row, Field.PhoneAliases);
 
-            AddRecord(records, name, address, registrationNo, businessItem, phoneNumber, line);
+            AddRecord(records, name, address, registrationNo, businessItem, phoneNumber, line, options);
         }
 
         return records;
@@ -144,12 +321,27 @@ public sealed class FdaFoodBusinessClient(
     /// </summary>
     private static void AddRecord(
         ICollection<RestaurantImportRecord> records,
+        JsonElement element,
+        RestaurantImportOptions options)
+    {
+        var name = GetString(element, Field.BusinessNameAliases);
+        var address = GetString(element, Field.AddressAliases);
+        var registrationNo = GetString(element, Field.RegistrationNoAliases);
+        var businessItem = GetString(element, Field.BusinessItemAliases);
+        var phoneNumber = GetString(element, Field.PhoneAliases);
+
+        AddRecord(records, name, address, registrationNo, businessItem, phoneNumber, element.GetRawText(), options);
+    }
+
+    private static void AddRecord(
+        ICollection<RestaurantImportRecord> records,
         string? name,
         string? address,
         string? registrationNo,
         string? businessItem,
         string? phoneNumber,
-        string rawPayload)
+        string rawPayload,
+        RestaurantImportOptions options)
     {
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(address))
         {
@@ -157,6 +349,11 @@ public sealed class FdaFoodBusinessClient(
         }
 
         if (!IsRestaurantBusiness(businessItem, name))
+        {
+            return;
+        }
+
+        if (!IsAllowedAddress(address, options.AddressPrefixes))
         {
             return;
         }
@@ -179,6 +376,11 @@ public sealed class FdaFoodBusinessClient(
     /// </summary>
     private static string? GetString(JsonElement element, params string[] propertyNames)
     {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
         foreach (var propertyName in propertyNames)
         {
             if (element.TryGetProperty(propertyName, out var value) &&
@@ -269,12 +471,33 @@ public sealed class FdaFoodBusinessClient(
         return Field.RestaurantKeywords.Any(keyword => name.Contains(keyword, StringComparison.Ordinal));
     }
 
+    private static bool IsAllowedAddress(string address, IReadOnlyCollection<string> addressPrefixes)
+    {
+        if (addressPrefixes.Count == 0)
+        {
+            return true;
+        }
+
+        var normalizedAddress = NormalizeWhitespace(address);
+        return addressPrefixes.Any(prefix =>
+            !string.IsNullOrWhiteSpace(prefix) &&
+            normalizedAddress.StartsWith(prefix.Trim(), StringComparison.Ordinal));
+    }
+
     /// <summary>
     /// 合併來源值中的重複空白字元。
     /// </summary>
     private static string NormalizeWhitespace(string value)
     {
         return string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string BuildPreview(string content)
+    {
+        var normalized = NormalizeWhitespace(content);
+        return normalized.Length <= 1000
+            ? normalized
+            : normalized[..1000];
     }
 
     /// <summary>
@@ -292,15 +515,66 @@ public sealed class FdaFoodBusinessClient(
         public const string BusinessName = "\u516c\u53f8\u6216\u5546\u696d\u767b\u8a18\u540d\u7a31";
         public const string CompanyName = "\u516c\u53f8\u540d\u7a31";
         public const string RegisteredBusinessName = "\u5546\u696d\u767b\u8a18\u540d\u7a31";
+        public const string FoodBusinessName = "\u98df\u54c1\u696d\u8005\u540d\u7a31";
+        public const string FoodBusinessRegisteredName = "\u98df\u54c1\u696d\u8005\u767b\u9304\u540d\u7a31";
+        public const string OperatorName = "\u696d\u8005\u540d\u7a31";
         public const string BusinessAddress = "\u696d\u8005\u5730\u5740";
+        public const string FoodBusinessAddress = "\u98df\u54c1\u696d\u8005\u5730\u5740";
+        public const string FoodBusinessRegisteredAddress = "\u98df\u54c1\u696d\u8005\u767b\u9304\u5730\u5740";
         public const string Address = "\u5730\u5740";
         public const string FoodBusinessRegistrationNo = "\u98df\u54c1\u696d\u8005\u767b\u9304\u5b57\u865f";
         public const string RegistrationNo = "\u767b\u9304\u5b57\u865f";
         public const string RegistrationItem = "\u767b\u9304\u9805\u76ee";
+        public const string FoodBusinessRegistrationItem = "\u98df\u54c1\u696d\u8005\u767b\u9304\u9805\u76ee";
         public const string BusinessItem = "\u71df\u696d\u9805\u76ee";
         public const string Phone = "\u96fb\u8a71";
         public const string ContactPhone = "\u9023\u7d61\u96fb\u8a71";
+        public const string FoodBusinessPhone = "\u98df\u54c1\u696d\u8005\u96fb\u8a71";
         public const string RestaurantIndustry = "\u9910\u98f2";
+
+        public static readonly string[] BusinessNameAliases =
+        [
+            BusinessName,
+            CompanyName,
+            RegisteredBusinessName,
+            FoodBusinessName,
+            FoodBusinessRegisteredName,
+            OperatorName,
+            "Name"
+        ];
+
+        public static readonly string[] AddressAliases =
+        [
+            BusinessAddress,
+            FoodBusinessAddress,
+            FoodBusinessRegisteredAddress,
+            Address,
+            "Address"
+        ];
+
+        public static readonly string[] RegistrationNoAliases =
+        [
+            FoodBusinessRegistrationNo,
+            RegistrationNo,
+            "RegisterNo"
+        ];
+
+        public static readonly string[] BusinessItemAliases =
+        [
+            RegistrationItem,
+            FoodBusinessRegistrationItem,
+            BusinessItem,
+            "BusinessItem"
+        ];
+
+        public static readonly string[] PhoneAliases =
+        [
+            Phone,
+            ContactPhone,
+            FoodBusinessPhone,
+            "Phone",
+            "PhoneNumber"
+        ];
 
         public static readonly string[] RestaurantKeywords =
         [

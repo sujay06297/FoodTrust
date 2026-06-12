@@ -10,3 +10,9 @@ obj/
 *.db-wal
 *.lscache
 *.backup-*.docx
+
+**/appsettings.Development.json
+certs/
+FoodTrust.Web/*.log
+FoodTrust.Worker/*.log
+tmp-api-publish/
