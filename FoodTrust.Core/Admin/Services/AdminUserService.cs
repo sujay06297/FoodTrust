@@ -1,5 +1,8 @@
+using FoodTrust.Core.Admin.Domain.ValueObjects;
 using FoodTrust.Core.Admin.Interfaces;
 using FoodTrust.Core.Admin.Models;
+using FoodTrust.Core.Common.Domain;
+using FoodTrust.Core.Users.Domain.ValueObjects;
 
 namespace FoodTrust.Core.Admin.Services;
 
@@ -7,31 +10,16 @@ public sealed class AdminUserService(
     IAdminUserRepository repository,
     IPasswordHasher passwordHasher) : IAdminUserService
 {
-    /// <summary>
-    /// 驗證分頁並查詢後台管理員列表。
-    /// </summary>
     public Task<AdminUserSearchResult> SearchAsync(int page, int pageSize, bool? isActive)
     {
-        return repository.SearchAsync(
-            Math.Max(1, page),
-            Math.Clamp(pageSize, 1, 200),
-            isActive);
+        var pageRequest = PageRequest.Create(page, pageSize);
+        return repository.SearchAsync(pageRequest.Page, pageRequest.PageSize, isActive);
     }
 
-    /// <summary>
-    /// 驗證並更新後台管理員啟用狀態。
-    /// </summary>
     public Task<bool> UpdateActiveAsync(long id, bool isActive, long currentAdminUserId)
     {
-        if (id <= 0)
-        {
-            throw new ArgumentException("Admin user identifier is required.", nameof(id));
-        }
-
-        if (currentAdminUserId <= 0)
-        {
-            throw new ArgumentException("Current admin user identifier is required.", nameof(currentAdminUserId));
-        }
+        EntityId.Create(id, nameof(id));
+        EntityId.Create(currentAdminUserId, nameof(currentAdminUserId));
 
         if (!isActive && id == currentAdminUserId)
         {
@@ -41,58 +29,30 @@ public sealed class AdminUserService(
         return repository.UpdateActiveAsync(id, isActive);
     }
 
-    /// <summary>
-    /// 驗證並更新後台管理員角色。
-    /// </summary>
     public Task<bool> UpdateRoleAsync(long id, string role, long currentAdminUserId)
     {
-        if (id <= 0)
-        {
-            throw new ArgumentException("Admin user identifier is required.", nameof(id));
-        }
+        EntityId.Create(id, nameof(id));
+        EntityId.Create(currentAdminUserId, nameof(currentAdminUserId));
+        var roleName = AdminRoleName.Create(role);
 
-        if (currentAdminUserId <= 0)
-        {
-            throw new ArgumentException("Current admin user identifier is required.", nameof(currentAdminUserId));
-        }
-
-        if (!AdminRole.IsValid(role))
-        {
-            throw new ArgumentException("Invalid admin role.", nameof(role));
-        }
-
-        if (id == currentAdminUserId && role != AdminRole.Admin)
+        if (id == currentAdminUserId && roleName.Value != AdminRole.Admin)
         {
             throw new ArgumentException("Admin user cannot downgrade the current signed-in account.", nameof(id));
         }
 
-        return repository.UpdateRoleAsync(id, role);
+        return repository.UpdateRoleAsync(id, roleName.Value);
     }
 
-    /// <summary>
-    /// 驗證目前密碼並更新登入管理員密碼。
-    /// </summary>
     public async Task<bool> ChangePasswordAsync(long currentAdminUserId, string currentPassword, string newPassword)
     {
-        if (currentAdminUserId <= 0)
-        {
-            throw new ArgumentException("Current admin user identifier is required.", nameof(currentAdminUserId));
-        }
-
+        EntityId.Create(currentAdminUserId, nameof(currentAdminUserId));
         if (string.IsNullOrWhiteSpace(currentPassword))
         {
             throw new ArgumentException("Current password is required.", nameof(currentPassword));
         }
 
-        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 12)
-        {
-            throw new ArgumentException("New password must be at least 12 characters.", nameof(newPassword));
-        }
-
-        if (currentPassword == newPassword)
-        {
-            throw new ArgumentException("New password must be different from current password.", nameof(newPassword));
-        }
+        var nextPassword = AccountPassword.Create(newPassword, nameof(newPassword));
+        nextPassword.EnsureDifferentFrom(AccountPassword.Create(currentPassword, nameof(currentPassword)));
 
         var adminUser = await repository.FindByIdAsync(currentAdminUserId);
         if (adminUser is null || !adminUser.IsActive)
@@ -107,6 +67,6 @@ public sealed class AdminUserService(
 
         return await repository.UpdatePasswordHashAsync(
             currentAdminUserId,
-            passwordHasher.Hash(newPassword));
+            passwordHasher.Hash(nextPassword.Value));
     }
 }

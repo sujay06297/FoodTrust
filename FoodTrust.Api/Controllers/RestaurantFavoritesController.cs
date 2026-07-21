@@ -9,12 +9,13 @@ namespace FoodTrust.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = UserRole.User)]
+[Route("api/v1")]
 public sealed class RestaurantFavoritesController(IRestaurantFavoriteService favoriteService) : ControllerBase
 {
     /// <summary>
     /// 收藏指定餐廳。
     /// </summary>
-    [HttpPost("api/v1/restaurants/{restaurantId:long}/favorite")]
+    [HttpPost("restaurants/{restaurantId:long}/favorites")]
     public async Task<IActionResult> Add(long restaurantId)
     {
         var added = await favoriteService.AddFavoriteAsync(GetCurrentUserId(), restaurantId);
@@ -24,7 +25,7 @@ public sealed class RestaurantFavoritesController(IRestaurantFavoriteService fav
     /// <summary>
     /// 取消收藏指定餐廳。
     /// </summary>
-    [HttpDelete("api/v1/restaurants/{restaurantId:long}/favorite")]
+    [HttpDelete("restaurants/{restaurantId:long}/favorites")]
     public async Task<IActionResult> Remove(long restaurantId)
     {
         var removed = await favoriteService.RemoveFavoriteAsync(GetCurrentUserId(), restaurantId);
@@ -34,7 +35,7 @@ public sealed class RestaurantFavoritesController(IRestaurantFavoriteService fav
     /// <summary>
     /// 查詢目前會員收藏餐廳。
     /// </summary>
-    [HttpGet("api/v1/users/me/favorite-restaurants")]
+    [HttpGet("users/me/favorite-restaurants")]
     public async Task<ActionResult<FavoriteRestaurantSearchResult>> Search(
         [FromQuery] int? page,
         [FromQuery] int? pageSize)

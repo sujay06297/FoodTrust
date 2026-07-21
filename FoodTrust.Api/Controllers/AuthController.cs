@@ -6,13 +6,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace FoodTrust.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/auth")]
+[Route("api/v1")]
 public sealed class AuthController(IUserAuthService userAuthService) : ControllerBase
 {
     /// <summary>
     /// 註冊一般會員並取得 JWT。
     /// </summary>
-    [HttpPost("register")]
+    [HttpPost("users")]
     public async Task<ActionResult<UserAuthResult>> Register([FromBody] RegisterUserRequest request)
     {
         var result = await userAuthService.RegisterAsync(new RegisterUserCommand(
@@ -26,7 +26,7 @@ public sealed class AuthController(IUserAuthService userAuthService) : Controlle
     /// <summary>
     /// 使用一般會員帳密登入並取得 JWT。
     /// </summary>
-    [HttpPost("login")]
+    [HttpPost("sessions")]
     public async Task<ActionResult<UserAuthResult>> Login([FromBody] LoginUserRequest request)
     {
         var result = await userAuthService.LoginAsync(new LoginUserCommand(

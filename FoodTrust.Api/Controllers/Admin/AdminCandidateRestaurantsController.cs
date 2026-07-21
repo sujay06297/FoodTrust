@@ -30,25 +30,29 @@ public sealed class AdminCandidateRestaurantsController(ICandidateRestaurantServ
         return Ok(result);
     }
 
-    [HttpPost("{id:long}/approve")]
-    public async Task<ActionResult<object>> Approve(long id, [FromBody] ApproveCandidateRestaurantRequest request)
+    [HttpPatch("{id:long}/status")]
+    public async Task<ActionResult<object>> UpdateStatus(long id, [FromBody] UpdateCandidateRestaurantStatusRequest request)
     {
+        if (request.Status == CandidateRestaurantStatus.Rejected)
+        {
+            var updated = await candidateRestaurantService.RejectAsync(id);
+            return updated ? NoContent() : NotFound();
+        }
+
+        if (request.Status != CandidateRestaurantStatus.Approved)
+        {
+            throw new ArgumentException("Invalid candidate restaurant status.", nameof(request.Status));
+        }
+
         var restaurantId = await candidateRestaurantService.ApproveAsync(
             new ApproveCandidateRestaurantCommand(
                 id,
-                request.Name,
-                request.Address,
+                request.Name ?? string.Empty,
+                request.Address ?? string.Empty,
                 request.PhoneNumber));
 
         return restaurantId is null
             ? NotFound()
             : Ok(new { restaurantId });
-    }
-
-    [HttpPost("{id:long}/reject")]
-    public async Task<IActionResult> Reject(long id)
-    {
-        var updated = await candidateRestaurantService.RejectAsync(id);
-        return updated ? NoContent() : NotFound();
     }
 }

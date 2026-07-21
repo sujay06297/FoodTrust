@@ -1,4 +1,5 @@
 using FoodTrust.Core.RestaurantImports.Interfaces;
+using FoodTrust.Core.RestaurantImports.Domain;
 
 namespace FoodTrust.Core.RestaurantImports.Services;
 
@@ -12,6 +13,7 @@ public sealed class RestaurantImportService(
     /// </summary>
     public async Task ImportAsync(int batchSize, CancellationToken cancellationToken)
     {
+        var importBatchSize = ImportBatchSize.Create(batchSize);
         var runId = await importRunRepository.StartImportRunAsync(
             source.SourceSystem,
             source.SourceUrl,
@@ -30,7 +32,7 @@ public sealed class RestaurantImportService(
                 .Select(group => group.First())
                 .ToArray();
 
-            foreach (var batch in distinctRecords.Chunk(Math.Max(1, batchSize)))
+            foreach (var batch in distinctRecords.Chunk(importBatchSize.Value))
             {
                 var result = await importTargetRepository.UpsertRestaurantsAsync(batch);
                 importedCount += result.ImportedCount;

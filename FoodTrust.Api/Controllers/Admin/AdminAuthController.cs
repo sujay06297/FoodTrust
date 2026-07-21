@@ -6,13 +6,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace FoodTrust.Api.Controllers.Admin;
 
 [ApiController]
-[Route("api/v1/admin/auth")]
+[Route("api/v1/admin")]
 public sealed class AdminAuthController(IAdminAuthService adminAuthService) : ControllerBase
 {
     /// <summary>
     /// 在系統尚未有管理員時建立第一個後台管理員。
     /// </summary>
-    [HttpPost("bootstrap")]
+    [HttpPost("bootstrap-admin-users")]
     public async Task<ActionResult<AdminBootstrapResult>> Bootstrap([FromBody] BootstrapAdminRequest request)
     {
         var result = await adminAuthService.BootstrapAsync(new AdminBootstrapCommand(
@@ -26,7 +26,7 @@ public sealed class AdminAuthController(IAdminAuthService adminAuthService) : Co
     /// <summary>
     /// 使用後台管理員帳密登入並取得 JWT。
     /// </summary>
-    [HttpPost("login")]
+    [HttpPost("sessions")]
     public async Task<ActionResult<AdminLoginResult>> Login([FromBody] LoginAdminRequest request)
     {
         var result = await adminAuthService.LoginAsync(new AdminLoginCommand(
@@ -39,7 +39,7 @@ public sealed class AdminAuthController(IAdminAuthService adminAuthService) : Co
     /// <summary>
     /// 使用 refresh token 輪替後台 access token。
     /// </summary>
-    [HttpPost("refresh")]
+    [HttpPost("refresh-tokens/exchanges")]
     public async Task<ActionResult<AdminLoginResult>> Refresh([FromBody] RefreshAdminTokenRequest request)
     {
         var result = await adminAuthService.RefreshAsync(request.RefreshToken);
@@ -49,7 +49,7 @@ public sealed class AdminAuthController(IAdminAuthService adminAuthService) : Co
     /// <summary>
     /// 撤銷後台 refresh token。
     /// </summary>
-    [HttpPost("revoke")]
+    [HttpDelete("refresh-tokens")]
     public async Task<IActionResult> Revoke([FromBody] RevokeAdminRefreshTokenRequest request)
     {
         var revoked = await adminAuthService.RevokeRefreshTokenAsync(request.RefreshToken);

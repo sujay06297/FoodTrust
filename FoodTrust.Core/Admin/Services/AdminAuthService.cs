@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
+using FoodTrust.Core.Admin.Domain.ValueObjects;
 using FoodTrust.Core.Admin.Interfaces;
 using FoodTrust.Core.Admin.Models;
+using FoodTrust.Core.Users.Domain.ValueObjects;
 
 namespace FoodTrust.Core.Admin.Services;
 
@@ -13,12 +15,9 @@ public sealed class AdminAuthService(
     private const int RefreshTokenExpirationDays = 14;
     private const int RefreshTokenByteLength = 64;
 
-    /// <summary>
-    /// 使用帳號密碼登入後台並簽發存取權杖。
-    /// </summary>
     public async Task<AdminLoginResult?> LoginAsync(AdminLoginCommand command)
     {
-        var username = NormalizeUsername(command.Username);
+        var username = AdminUsername.NormalizeForLogin(command.Username);
         if (username is null || string.IsNullOrWhiteSpace(command.Password))
         {
             return null;
@@ -36,9 +35,6 @@ public sealed class AdminAuthService(
         return await CreateLoginResultAsync(adminUser, accessToken);
     }
 
-    /// <summary>
-    /// 使用 refresh token 輪替後台存取權杖。
-    /// </summary>
     public async Task<AdminLoginResult?> RefreshAsync(string refreshToken)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
@@ -67,9 +63,6 @@ public sealed class AdminAuthService(
         return await CreateLoginResultAsync(adminUser, accessToken);
     }
 
-    /// <summary>
-    /// 撤銷後台 refresh token。
-    /// </summary>
     public async Task<bool> RevokeRefreshTokenAsync(string refreshToken)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
@@ -86,9 +79,6 @@ public sealed class AdminAuthService(
         return await refreshTokenRepository.RevokeAsync(storedToken.Id, DateTimeOffset.UtcNow.UtcDateTime);
     }
 
-    /// <summary>
-    /// 在尚未有管理員時建立第一個後台管理員。
-    /// </summary>
     public async Task<AdminBootstrapResult> BootstrapAsync(AdminBootstrapCommand command)
     {
         if (await adminUserRepository.HasAnyAsync())
@@ -96,25 +86,29 @@ public sealed class AdminAuthService(
             return new AdminBootstrapResult(false, "Admin user already exists.", null);
         }
 
-        var username = NormalizeUsername(command.Username);
-        var displayName = NormalizeDisplayName(command.DisplayName, username);
-        if (username is null || command.Password.Length < 12)
+        AdminUsername username;
+        AccountPassword password;
+        AdminDisplayName displayName;
+        try
+        {
+            username = AdminUsername.Create(command.Username);
+            password = AccountPassword.Create(command.Password, nameof(command.Password));
+            displayName = AdminDisplayName.Create(command.DisplayName, username);
+        }
+        catch (ArgumentException)
         {
             return new AdminBootstrapResult(false, "Invalid username or password.", null);
         }
 
         var adminUser = await adminUserRepository.CreateAsync(new CreateAdminUserCommand(
-            username,
-            passwordHasher.Hash(command.Password),
-            displayName,
+            username.Value,
+            passwordHasher.Hash(password.Value),
+            displayName.Value,
             AdminRole.Admin));
 
         return new AdminBootstrapResult(true, null, ToSummary(adminUser));
     }
 
-    /// <summary>
-    /// 建立 access token 與 refresh token 登入結果。
-    /// </summary>
     private async Task<AdminLoginResult> CreateLoginResultAsync(AdminUser adminUser, AdminAccessToken accessToken)
     {
         var refreshToken = GenerateRefreshToken();
@@ -132,41 +126,16 @@ public sealed class AdminAuthService(
             ToSummary(adminUser));
     }
 
-    /// <summary>
-    /// 產生不可預測的 refresh token。
-    /// </summary>
     private static string GenerateRefreshToken()
     {
         return Convert.ToBase64String(RandomNumberGenerator.GetBytes(RefreshTokenByteLength));
     }
 
-    /// <summary>
-    /// 將 refresh token 雜湊後再儲存。
-    /// </summary>
     private static string HashToken(string token)
     {
         return Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
     }
 
-    /// <summary>
-    /// 將帳號轉為標準格式。
-    /// </summary>
-    private static string? NormalizeUsername(string? username)
-    {
-        return string.IsNullOrWhiteSpace(username) ? null : username.Trim().ToLowerInvariant();
-    }
-
-    /// <summary>
-    /// 將顯示名稱轉為標準格式。
-    /// </summary>
-    private static string NormalizeDisplayName(string? displayName, string? username)
-    {
-        return string.IsNullOrWhiteSpace(displayName) ? username ?? "admin" : displayName.Trim();
-    }
-
-    /// <summary>
-    /// 將管理員資料轉為對外回傳摘要。
-    /// </summary>
     private static AdminUserSummary ToSummary(AdminUser user)
     {
         return new AdminUserSummary(

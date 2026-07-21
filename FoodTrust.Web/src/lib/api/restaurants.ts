@@ -49,14 +49,14 @@ export function getRestaurantReviews(id: string | number, limit = 20) {
 }
 
 export function addFavorite(restaurantId: number, token: string) {
-  return apiFetch<void>(`/api/v1/restaurants/${restaurantId}/favorite`, {
+  return apiFetch<void>(`/api/v1/restaurants/${restaurantId}/favorites`, {
     method: "POST",
     token,
   });
 }
 
 export function removeFavorite(restaurantId: number, token: string) {
-  return apiFetch<void>(`/api/v1/restaurants/${restaurantId}/favorite`, {
+  return apiFetch<void>(`/api/v1/restaurants/${restaurantId}/favorites`, {
     method: "DELETE",
     token,
   });

@@ -1,5 +1,8 @@
+using FoodTrust.Core.Common.Domain;
+using FoodTrust.Core.RestaurantImports.Domain.ValueObjects;
 using FoodTrust.Core.RestaurantImports.Interfaces;
 using FoodTrust.Core.RestaurantImports.Models;
+using FoodTrust.Core.Restaurants.Domain.ValueObjects;
 
 namespace FoodTrust.Core.RestaurantImports.Services;
 
@@ -7,16 +10,16 @@ public sealed class CandidateRestaurantService(ICandidateRestaurantRepository re
 {
     public Task<CandidateRestaurantSearchResult> SearchAsync(CandidateRestaurantSearchRequest request)
     {
-        if (!string.IsNullOrWhiteSpace(request.Status) &&
-            !CandidateRestaurantStatus.IsValid(request.Status.Trim()))
-        {
-            throw new ArgumentException("Invalid candidate restaurant status.", nameof(request.Status));
-        }
+        var status = string.IsNullOrWhiteSpace(request.Status)
+            ? null
+            : CandidateRestaurantLifecycleStatus.Create(request.Status).Value;
+        var pageRequest = PageRequest.Create(request.Page, request.PageSize);
 
         var normalizedRequest = request with
         {
-            Page = Math.Max(1, request.Page),
-            PageSize = Math.Clamp(request.PageSize, 1, 200)
+            Status = status,
+            Page = pageRequest.Page,
+            PageSize = pageRequest.PageSize
         };
 
         return repository.SearchAsync(normalizedRequest);
@@ -24,21 +27,18 @@ public sealed class CandidateRestaurantService(ICandidateRestaurantRepository re
 
     public Task<long?> ApproveAsync(ApproveCandidateRestaurantCommand command)
     {
-        if (string.IsNullOrWhiteSpace(command.Name))
-        {
-            throw new ArgumentException("Restaurant name is required.", nameof(command.Name));
-        }
-
-        if (string.IsNullOrWhiteSpace(command.Address))
-        {
-            throw new ArgumentException("Restaurant address is required.", nameof(command.Address));
-        }
+        EntityId.Create(command.CandidateId, nameof(command.CandidateId));
+        RestaurantName.Create(command.Name);
+        RestaurantAddress.Create(command.Address);
+        CandidateRestaurantLifecycleStatus.Create(CandidateRestaurantStatus.Approved);
 
         return repository.ApproveAsync(command);
     }
 
     public Task<bool> RejectAsync(long id)
     {
+        EntityId.Create(id, nameof(id));
+        CandidateRestaurantLifecycleStatus.Create(CandidateRestaurantStatus.Rejected);
         return repository.RejectAsync(id);
     }
 }

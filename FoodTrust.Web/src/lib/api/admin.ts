@@ -32,16 +32,17 @@ export function approveCandidateRestaurant(
     phoneNumber?: string | null;
   },
 ) {
-  return apiFetch<{ restaurantId: number }>(`/api/v1/admin/candidate-restaurants/${id}/approve`, {
-    method: "POST",
+  return apiFetch<{ restaurantId: number }>(`/api/v1/admin/candidate-restaurants/${id}/status`, {
+    method: "PATCH",
     token,
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, status: "Approved" }),
   });
 }
 
 export function rejectCandidateRestaurant(token: string, id: number) {
-  return apiFetch<void>(`/api/v1/admin/candidate-restaurants/${id}/reject`, {
-    method: "POST",
+  return apiFetch<void>(`/api/v1/admin/candidate-restaurants/${id}/status`, {
+    method: "PATCH",
     token,
+    body: JSON.stringify({ status: "Rejected" }),
   });
 }

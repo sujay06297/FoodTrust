@@ -805,3 +805,44 @@ cc46d92 新增評論檢舉流程；ae72ee9 新增後台評論審核紀錄；74c9
 - 下次接續第三步：用 `gcloud run deploy ... --set-secrets ...` 重新部署 `foodtrust-api`，確認 Cloud Run URL 可對外提供 API。
 - 下次接續第四步：把 `FoodTrust.Web/.env.local` 的 `NEXT_PUBLIC_API_BASE_URL` 改成 Cloud Run DEV URL，驗證本機前端直接打 DEV API。
 - 下次接續第五步：評估 `FoodTrust.Worker` 改為 Cloud Run Jobs + Cloud Scheduler，取代目前長駐 worker。
+
+## 架構調整紀錄（2026-07-21）
+
+本次調整目標：將專案明確整理為 RESTful API + Clean Architecture + DDD 實作。
+
+### RESTful API 調整
+
+- 使用者註冊由 `POST /api/v1/auth/register` 調整為 `POST /api/v1/users`。
+- 使用者登入由 `POST /api/v1/auth/login` 調整為 `POST /api/v1/sessions`。
+- 管理員登入由 `POST /api/v1/admin/auth/login` 調整為 `POST /api/v1/admin/sessions`。
+- 管理員 refresh token 交換調整為 `POST /api/v1/admin/refresh-tokens/exchanges`。
+- 管理員 refresh token 撤銷調整為 `DELETE /api/v1/admin/refresh-tokens`。
+- 餐廳收藏由單數動作路由 `/favorite` 調整為集合資源 `/favorites`。
+- 候選餐廳 approve/reject 動作路由調整為 `PATCH /api/v1/admin/candidate-restaurants/{id}/status`。
+- 前端 `FoodTrust.Web/src/lib/api/*` 已同步更新上述 API endpoint。
+
+### Clean Architecture 調整
+
+- `FoodTrust.Core` 保持為內層，集中 domain model、value object、interface 與 application service。
+- `FoodTrust.Infrastructure` 保持為外層，實作 Dapper/MySQL repository、migration、外部匯入來源與安全雜湊。
+- `FoodTrust.Api` 保持為 delivery/composition root，處理 controller、request model、JWT、DI 組裝。
+- `FoodTrust.Api` 已明確加入 `FoodTrust.Core` 專案參考，讓 composition root 對內層依賴清楚化。
+- `FoodTrust.Worker` 繼續透過 Core/Infrastructure 執行背景匯入流程。
+
+### DDD 調整
+
+- 新增 `FoodTrust.Core/Common/Domain`：`EntityId`、`PageRequest`、`OptionalText`。
+- 新增 `FoodTrust.Core/Users/Domain/ValueObjects`：`UserEmail`、`DisplayName`、`AccountPassword`。
+- 新增 `FoodTrust.Core/Admin/Domain/ValueObjects`：`AdminUsername`、`AdminDisplayName`、`AdminRoleName`。
+- 新增 `FoodTrust.Core/Restaurants/Domain`：`Restaurant` aggregate、`RestaurantReview`、`FavoriteRestaurant`。
+- 新增 `FoodTrust.Core/Restaurants/Domain/ValueObjects`：`RestaurantName`、`RestaurantAddress`、`PriceRange`、`RestaurantLifecycleStatus`、`ReviewScore`、`ReviewContent`、`PricePerPerson`、`RestaurantReviewStatusName`、`ReviewReportReason`、`ReviewReportStatusName`、`ModerationActionName`。
+- 新增 `FoodTrust.Core/RestaurantImports/Domain`：`ImportBatchSize`、`CandidateRestaurantLifecycleStatus`。
+- `UserAuthService`、`AdminAuthService`、`AdminUserService`、`RestaurantService`、`RestaurantReviewService`、`RestaurantFavoriteService`、`CandidateRestaurantService`、`RestaurantImportService` 已改為透過 domain/value object 執行業務規則驗證與流程協調。
+- 業務規則已從 controller/repository/service 的 primitive validation 逐步收斂到 domain model/value object，例如 Email 格式、密碼長度、餐廳名稱與地址、價格區間、評論分數、評論內容長度、檢舉原因、管理員角色、收藏識別碼、匯入批次大小。
+
+### 驗證結果
+
+- `dotnet build FoodTrust.Api\FoodTrust.Api.csproj`：通過。
+- `dotnet build FoodTrust.Worker\FoodTrust.Worker.csproj`：通過。
+- `npm run build`（FoodTrust.Web）：通過。
+- 注意：API build 仍有既有套件警告 `Microsoft.OpenApi 2.3.0` high severity vulnerability，後續建議升級 Swashbuckle/OpenAPI 相關套件。
