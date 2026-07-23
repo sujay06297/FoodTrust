@@ -4,7 +4,7 @@ using FoodTrust.Core.Admin.Models;
 
 namespace FoodTrust.Infrastructure.Data;
 
-public sealed class DapperAdminRefreshTokenRepository(MySqlConnectionFactory connectionFactory) : IAdminRefreshTokenRepository
+public sealed class AdminRefreshTokenRepository(MySqlConnectionFactory connectionFactory) : IAdminRefreshTokenRepository
 {
     /// <summary>
     /// 建立後台 refresh token 紀錄。

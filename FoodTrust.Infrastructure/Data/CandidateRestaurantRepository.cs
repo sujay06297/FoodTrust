@@ -5,7 +5,7 @@ using FoodTrust.Core.Restaurants.Models;
 
 namespace FoodTrust.Infrastructure.Data;
 
-public sealed class DapperCandidateRestaurantRepository(MySqlConnectionFactory connectionFactory) :
+public sealed class CandidateRestaurantRepository(MySqlConnectionFactory connectionFactory) :
     IRestaurantImportTargetRepository,
     ICandidateRestaurantRepository
 {

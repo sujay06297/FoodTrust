@@ -28,16 +28,16 @@ public static class DependencyInjection
         services.AddSingleton<MySqlConnectionFactory>();
         services.AddSingleton<DatabaseInitializer>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
-        services.AddScoped<IAdminUserRepository, DapperAdminUserRepository>();
-        services.AddScoped<IAdminRefreshTokenRepository, DapperAdminRefreshTokenRepository>();
-        services.AddScoped<IUserRepository, DapperUserRepository>();
-        services.AddScoped<IRestaurantRepository, DapperRestaurantRepository>();
-        services.AddScoped<ICandidateRestaurantRepository, DapperCandidateRestaurantRepository>();
-        services.AddScoped<IRestaurantImportTargetRepository, DapperCandidateRestaurantRepository>();
-        services.AddScoped<IRestaurantReviewRepository, DapperRestaurantReviewRepository>();
-        services.AddScoped<IRestaurantFavoriteRepository, DapperRestaurantFavoriteRepository>();
-        services.AddScoped<IRestaurantRankingRepository, DapperRestaurantRankingRepository>();
-        services.AddScoped<IRestaurantImportRunRepository, DapperRestaurantImportRunRepository>();
+        services.AddScoped<IAdminUserRepository, AdminUserRepository>();
+        services.AddScoped<IAdminRefreshTokenRepository, AdminRefreshTokenRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRestaurantRepository, RestaurantRepository>();
+        services.AddScoped<ICandidateRestaurantRepository, CandidateRestaurantRepository>();
+        services.AddScoped<IRestaurantImportTargetRepository, CandidateRestaurantRepository>();
+        services.AddScoped<IRestaurantReviewRepository, RestaurantReviewRepository>();
+        services.AddScoped<IRestaurantFavoriteRepository, RestaurantFavoriteRepository>();
+        services.AddScoped<IRestaurantRankingRepository, RestaurantRankingRepository>();
+        services.AddScoped<IRestaurantImportRunRepository, RestaurantImportRunRepository>();
         services.AddScoped<IRestaurantImportService, RestaurantImportService>();
         services.AddScoped<IRestaurantImportRunService, RestaurantImportRunService>();
         services.AddScoped<IRestaurantImportSource>(provider =>

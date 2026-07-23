@@ -4,7 +4,7 @@ using FoodTrust.Core.Restaurants.Models;
 
 namespace FoodTrust.Infrastructure.Data;
 
-public sealed class DapperRestaurantRankingRepository(MySqlConnectionFactory connectionFactory) : IRestaurantRankingRepository
+public sealed class RestaurantRankingRepository(MySqlConnectionFactory connectionFactory) : IRestaurantRankingRepository
 {
     private const decimal BayesianMinimumReviewCount = 20m;
     private const decimal BayesianGlobalAverageScore = 3.6m;

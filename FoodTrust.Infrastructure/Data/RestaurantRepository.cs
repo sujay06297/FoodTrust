@@ -5,7 +5,7 @@ using FoodTrust.Core.Restaurants.Models;
 
 namespace FoodTrust.Infrastructure.Data;
 
-public sealed class DapperRestaurantRepository(MySqlConnectionFactory connectionFactory) :
+public sealed class RestaurantRepository(MySqlConnectionFactory connectionFactory) :
     IRestaurantRepository
 {
     private const decimal BayesianMinimumReviewCount = 20m;

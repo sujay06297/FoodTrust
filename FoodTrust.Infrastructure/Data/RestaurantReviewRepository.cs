@@ -4,7 +4,7 @@ using FoodTrust.Core.Restaurants.Models;
 
 namespace FoodTrust.Infrastructure.Data;
 
-public sealed class DapperRestaurantReviewRepository(MySqlConnectionFactory connectionFactory) : IRestaurantReviewRepository
+public sealed class RestaurantReviewRepository(MySqlConnectionFactory connectionFactory) : IRestaurantReviewRepository
 {
     /// <summary>
     /// 新增舊版單一分數評分，並同步寫入評論表。

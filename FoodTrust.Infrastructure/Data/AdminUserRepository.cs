@@ -4,7 +4,7 @@ using FoodTrust.Core.Admin.Models;
 
 namespace FoodTrust.Infrastructure.Data;
 
-public sealed class DapperAdminUserRepository(MySqlConnectionFactory connectionFactory) : IAdminUserRepository
+public sealed class AdminUserRepository(MySqlConnectionFactory connectionFactory) : IAdminUserRepository
 {
     /// <summary>
     /// 判斷系統是否已存在任何管理員。

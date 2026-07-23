@@ -4,7 +4,7 @@ using FoodTrust.Core.RestaurantImports.Models;
 
 namespace FoodTrust.Infrastructure.Data;
 
-public sealed class DapperRestaurantImportRunRepository(MySqlConnectionFactory connectionFactory) : IRestaurantImportRunRepository
+public sealed class RestaurantImportRunRepository(MySqlConnectionFactory connectionFactory) : IRestaurantImportRunRepository
 {
     /// <summary>
     /// 新增執行中的匯入紀錄並回傳識別碼。

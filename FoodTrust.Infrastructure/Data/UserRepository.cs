@@ -4,7 +4,7 @@ using FoodTrust.Core.Users.Models;
 
 namespace FoodTrust.Infrastructure.Data;
 
-public sealed class DapperUserRepository(MySqlConnectionFactory connectionFactory) : IUserRepository
+public sealed class UserRepository(MySqlConnectionFactory connectionFactory) : IUserRepository
 {
     /// <summary>
     /// 依電子信箱查詢會員。
