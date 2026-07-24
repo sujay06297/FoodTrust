@@ -1,12 +1,16 @@
 # FoodTrust / 食信 專案規格書
 
-> 整理版：由既有 DOCX 規格書匯出後整理，後續以此 Markdown 作為主要維護檔；DOCX 作為閱讀或交付版本。
+> 整理版：由既有 DOCX 規格書匯出後整理，此 Markdown 為唯一維護版本。原始 DOCX 備份不進版本控管，原因與已移除清單見 [docs/archive/README.md](docs/archive/README.md)。
+>
+> 本檔案只保留產品規格本體。文件入口（含各文件用途說明）見 [docs/README.md](docs/README.md)。開發進度、部署狀態與下一步待辦請見 [docs/handoff.md](docs/handoff.md)；歷史演進紀錄請見 [docs/devlog.md](docs/devlog.md)；重要架構決策見 [docs/adr/](docs/adr/)。
 
-FoodTrust / 食信
+FoodTrust / 食信 — 類 Tabelog 美食排行網專案規格書
 
-類 Tabelog 美食排行網專案規格書
-
-文件版本：v1.0文件日期：2026-05-15定位：台灣可信賴的美食排行與餐廳評價平台
+| 項目 | 內容 |
+| --- | --- |
+| 文件版本 | v1.0 |
+| 文件日期 | 2026-05-15 |
+| 定位 | 台灣可信賴的美食排行與餐廳評價平台 |
 
 ## 文件資訊
 
@@ -70,11 +74,8 @@ FoodTrust / 食信
 ### 2.1 核心機會
 
 - 台灣缺少一個以美食排行為核心、且有可信度機制的平台。
-
 - Google Maps 很強，但不是專門為美食排名設計。
-
 - 社群平台有聲量，但缺少結構化搜尋與長期累積。
-
 - 若能把「餐廳資料庫 + 搜尋 + 加權排行 + 高品質評論」做好，有機會形成差異化。
 
 ## 3. 專案目標
@@ -82,19 +83,14 @@ FoodTrust / 食信
 ### 3.1 核心目標
 
 - 讓使用者可以依地區、料理類型、價位、評分、評論可信度快速找到餐廳。
-
 - 建立餐廳排行與評論系統，避免單純平均星等造成誤導。
-
 - 建立後台審核與檢舉機制，降低假評論與錯誤資料。
-
 - 透過 SEO 與榜單內容取得自然流量。
 
 ### 3.2 差異化目標
 
 - 不主打最多評論，而是主打有效評論與可信排行。
-
 - 評論者權重、評論品質權重與時間衰減納入評分。
-
 - 排行與廣告必須分離，避免商業化傷害信任。
 
 ## 4. 目標使用者與角色權限
@@ -121,19 +117,12 @@ FoodTrust / 食信
 ### 5.2 第一版暫不做
 
 - 線上訂位
-
 - 外送串接
-
 - POS 串接
-
 - 付費廣告
-
 - 完整商家 CRM
-
 - AI 推薦
-
 - 社群動態牆
-
 - 手機 App
 
 ## 6. 功能需求規格
@@ -189,24 +178,20 @@ FoodTrust / 食信
 ### 6.4 評論限制
 
 - 評論字數至少 30 字。
-
 - 評分必須搭配文字內容。
-
 - 同一使用者同一餐廳 30 天內只計入一次分數。
-
 - 新帳號評論權重較低。
-
 - 被大量檢舉的帳號降低權重。
-
 - 可疑評論不進入排行計算。
-
 - 業者帳號不可評論自己的餐廳。
 
 ## 7. 排行與評分模型
 
 本專案不建議使用單純平均分。單純平均分容易讓少量五星評論的小店超越大量穩定好評的餐廳，也容易被灌水。第一版建議使用簡化版 Bayesian Average。
 
+```text
 平台分數 = (v / (v + m)) × R + (m / (v + m)) × C
+```
 
 | 參數 | 說明 |
 | --- | --- |
@@ -217,7 +202,9 @@ FoodTrust / 食信
 
 ### 7.1 評論者權重
 
+```text
 有效評論分數 = 原始分數 × 使用者權重 × 評論品質權重 × 時間衰減權重
+```
 
 | 條件 | 建議權重 |
 | --- | --- |
@@ -248,7 +235,13 @@ FoodTrust / 食信
 
 ### 7.4 排行榜分數
 
-RankingScore = PlatformScore × 0.65             + ReviewQualityScore × 0.15             + RecentPopularityScore × 0.10             + FavoriteScore × 0.05             + PhotoQualityScore × 0.05
+```text
+RankingScore = PlatformScore × 0.65
+             + ReviewQualityScore × 0.15
+             + RecentPopularityScore × 0.10
+             + FavoriteScore × 0.05
+             + PhotoQualityScore × 0.05
+```
 
 | 指標 | 權重 |
 | --- | --- |
@@ -263,54 +256,32 @@ RankingScore = PlatformScore × 0.65             + ReviewQualityScore × 0.15   
 ### 8.1 可疑評論判斷條件
 
 - 同 IP 短時間大量評論
-
 - 同裝置大量帳號
-
 - 新帳號只評論同一家店
-
 - 評論內容高度相似
-
 - 短時間大量五星或一星
-
 - 業者登入位置與評論帳號高度重疊
-
 - 評論時間集中在非營業時間
-
 - 評論文字像模板
 
 ### 8.2 評論狀態
 
-狀態
-
-說明
-
-Pending
-
-待審核
-
-Approved
-
-已通過
-
-Rejected
-
-已拒絕
-
-Hidden
-
-隱藏
-
-Suspicious
-
-可疑
-
-Deleted
-
-已刪除
+| 狀態 | 說明 |
+| --- | --- |
+| Pending | 待審核 |
+| Approved | 已通過 |
+| Rejected | 已拒絕 |
+| Hidden | 隱藏 |
+| Suspicious | 可疑 |
+| Deleted | 已刪除 |
 
 ### 8.3 分數計算條件
 
-Status = ApprovedAND IsSuspicious = falseAND IsDeleted = false
+```text
+Status = Approved
+AND IsSuspicious = false
+AND IsDeleted = false
+```
 
 ## 9. 資料來源規劃
 
@@ -324,23 +295,14 @@ Status = ApprovedAND IsSuspicious = falseAND IsDeleted = false
 ### 9.1 初期優先分類
 
 - 拉麵
-
 - 燒肉
-
 - 火鍋
-
 - 咖啡廳
-
 - 甜點
-
 - 牛肉麵
-
 - 居酒屋
-
 - 台菜
-
 - 小吃
-
 - 早午餐
 
 ## 10. 頁面規格
@@ -425,15 +387,10 @@ CREATE TABLE RestaurantScore (
 ### 11.4 其他資料表
 
 - RestaurantPhoto：餐廳照片、菜單照片、使用者上傳照片。
-
 - FavoriteRestaurant：會員收藏餐廳。
-
 - RestaurantCategory：料理分類。
-
 - RestaurantCategoryMapping：餐廳與分類對應。
-
 - RestaurantReport：檢舉資料。
-
 - RestaurantClaimRequest：商家認領申請。
 
 ## 12. 技術架構建議
@@ -448,7 +405,11 @@ CREATE TABLE RestaurantScore (
 | 背景工作 | .NET Worker | 分數計算、索引同步、可疑評論分析 |
 | 物件儲存 | S3 或相容服務 | 餐廳與評論照片 |
 
-### 12.1 建議方案結構
+> 目前實際採用的雲端部署（前端 Vercel、API/Worker Google Cloud Run、資料庫 TiDB Cloud Starter）與此表的初期建議不完全相同；決策過程與理由見 [docs/devlog.md](docs/devlog.md) 2026-06-10 項目，目前狀態見 [docs/handoff.md](docs/handoff.md)。
+
+### 12.1 建議方案結構（早期建議，非目前實作）
+
+下方是規劃初期（2026-05-15）的建議結構，僅作為設計意圖參考，**與目前實作已不一致**：
 
 ```text
 FoodTrust.Web       // Next.js 前台
@@ -460,12 +421,16 @@ FoodTrust.Search    // Typesense 同步與查詢
 FoodTrust.Common    // 共用模型、Enum、Util
 ```
 
+### 12.2 目前實作架構（現況）
+
+實際採用 Clean Architecture 分層，取代上方 12.1 的建議：`FoodTrust.Core`（domain/application，內層）、`FoodTrust.Infrastructure`（Dapper/MySQL、migration、外部匯入，外層）、`FoodTrust.Api`（controller/JWT/DI，composition root）、`FoodTrust.Worker`（背景匯入）、`FoodTrust.Web`（Next.js 前台）。並無獨立的 `FoodTrust.Admin`、`FoodTrust.Data`、`FoodTrust.Search`、`FoodTrust.Common` 專案；後台管理是 `FoodTrust.Api` 內的 Admin 路由與角色權限，Typesense/Redis 尚未導入。完整現況見 [docs/handoff.md](docs/handoff.md)，架構決策脈絡見 [docs/adr/](docs/adr/)。
+
 ## 13. API 規格範例
 
 ### 13.1 搜尋餐廳
 
 ```http
-GET /api/restaurants/searchQuery:keyword=拉麵cityId=1districtId=5categoryId=10minScore=3.5priceMin=100priceMax=500sortBy=rankingpage=1pageSize=20
+GET /api/restaurants/search?keyword=拉麵&cityId=1&districtId=5&categoryId=10&minScore=3.5&priceMin=100&priceMax=500&sortBy=ranking&page=1&pageSize=20
 ```
 
 ### 13.2 取得餐廳詳細資料
@@ -477,8 +442,24 @@ GET /api/restaurants/{restaurantId}
 ### 13.3 新增評論
 
 ```http
-POST /api/restaurants/{restaurantId}/reviews{  "tasteScore": 4.5,  "serviceScore": 4.0,  "environmentScore": 3.8,  "valueScore": 4.2,  "revisitScore": 4.5,  "content": "餐點味道穩定，湯頭濃度夠，價格合理，尖峰時間需要排隊。",  "visitDate": "2026-05-15",  "pricePerPerson": 350,  "diningType": 2,  "companionType": 3}
+POST /api/restaurants/{restaurantId}/reviews
+Content-Type: application/json
+
+{
+  "tasteScore": 4.5,
+  "serviceScore": 4.0,
+  "environmentScore": 3.8,
+  "valueScore": 4.2,
+  "revisitScore": 4.5,
+  "content": "餐點味道穩定，湯頭濃度夠，價格合理，尖峰時間需要排隊。",
+  "visitDate": "2026-05-15",
+  "pricePerPerson": 350,
+  "diningType": 2,
+  "companionType": 3
+}
 ```
+
+> 實際上線的路由已依 RESTful 慣例調整（例如會員/管理員登入改為對 `sessions` 資源 POST），詳見 [docs/devlog.md](docs/devlog.md) 2026-07-21 項目。此節保留原始規格範例作為設計意圖參考。
 
 ## 14. 後台管理規格
 
@@ -495,7 +476,14 @@ POST /api/restaurants/{restaurantId}/reviews{  "tasteScore": 4.5,  "serviceScore
 
 每個餐廳頁、城市排行榜、料理分類排行榜都應該有獨立 URL，讓 Google 可以收錄。
 
-餐廳頁 URL:/{city}/{district}/restaurants/{restaurantId}範例:/taipei/daan/restaurants/12345Title:店名｜台北大安區拉麵推薦｜FoodTrust 食信Meta Description:查看店名的真實用餐評價、價格、營業時間、推薦菜色與台北大安區拉麵排行榜。
+餐廳頁範例：
+
+```text
+URL: /{city}/{district}/restaurants/{restaurantId}
+範例: /taipei/daan/restaurants/12345
+Title: 店名｜台北大安區拉麵推薦｜FoodTrust 食信
+Meta Description: 查看店名的真實用餐評價、價格、營業時間、推薦菜色與台北大安區拉麵排行榜。
+```
 
 ## 16. 開發階段規劃
 
@@ -508,41 +496,13 @@ POST /api/restaurants/{restaurantId}/reviews{  "tasteScore": 4.5,  "serviceScore
 
 ## 17. 風險與解法
 
-風險
-
-問題
-
-解法
-
-初期資料量不足
-
-沒有評論就沒有排行
-
-先做編輯精選榜，人工建立 500～1000 間餐廳，開放使用者補資料
-
-評論可信度不足
-
-容易變成灌水平台
-
-不採單純平均分，建立評論者權重與可疑評論偵測
-
-Google Maps 已經很強
-
-使用者習慣直接用 Google Maps
-
-不要比地圖，要比美食分類、排行可信度與主題榜單
-
-商業化傷害信任
-
-餐廳買排名會破壞平台價值
-
-廣告與自然排行分開，付費曝光明確標示
-
-維護成本過高
-
-餐廳資訊常變動
-
-開放使用者回報與商家認領，但重要變更需審核
+| 風險 | 問題 | 解法 |
+| --- | --- | --- |
+| 初期資料量不足 | 沒有評論就沒有排行 | 先做編輯精選榜，人工建立 500～1000 間餐廳，開放使用者補資料 |
+| 評論可信度不足 | 容易變成灌水平台 | 不採單純平均分，建立評論者權重與可疑評論偵測 |
+| Google Maps 已經很強 | 使用者習慣直接用 Google Maps | 不要比地圖，要比美食分類、排行可信度與主題榜單 |
+| 商業化傷害信任 | 餐廳買排名會破壞平台價值 | 廣告與自然排行分開，付費曝光明確標示 |
+| 維護成本過高 | 餐廳資訊常變動 | 開放使用者回報與商家認領，但重要變更需審核 |
 
 ## 18. 成功指標
 
@@ -573,276 +533,11 @@ Google Maps 已經很強
 
 第一版建議先聚焦「找餐廳 → 看排行 → 看評論 → 收藏 → 自己寫評論」這條核心流程，先讓產品有明確價值，再逐步加入商家認領、訂位與商業化功能。
 
-附錄 A：參考資料
+### 附錄 A：參考資料
 
-Tabelog 官方說明：餐廳分數並非單純平均，而是透過演算法計算。
+- Tabelog 官方說明：餐廳分數並非單純平均，而是透過演算法計算。
+- 米其林指南台灣名單：可作為餐廳標籤或外部權威參考，但不建議直接作為平台評分來源。
 
-米其林指南台灣名單：可作為餐廳標籤或外部權威參考，但不建議直接作為平台評分來源。
+---
 
-## 實作狀態標記（2026-05-15）
-
-標記說明：已完成 = 已在目前後端專案中落地；部分完成 = 已有雛形但未達規格完整要求；未完成 = 尚未實作。
-
-- 已完成：ASP.NET Core API 專案、Core/Infrastructure 分層、MySQL 初始化、餐廳資料表、餐廳來源表、餐廳匯入紀錄表、餐廳評分表。
-
-- 已完成：餐廳新增、查詢、詳細資料、更新、狀態更新 API。
-
-- 已完成：簡易評分 API（1-5 分）、簡易排行榜 API（依平均分數與評分數排序）。
-
-- 已完成：台灣 FDA 食品業者資料匯入、ZIP/JSON/CSV 解析、餐飲業者篩選、來源 key 去重、同名同地址餐廳避免重複建立。
-
-- 已完成：.NET Worker 定期匯入、啟動時匯入、匯入成功/失敗紀錄查詢。
-
-- 部分完成：評論功能目前只有單一整體分數、簡短留言與評論者名稱，尚未包含味道/服務/環境/CP/再訪五項分數、用餐日期、人均消費、審核狀態與會員限制。
-
-- 部分完成：排行榜目前使用簡易平均分，尚未實作 Bayesian Average、評論者權重、評論品質權重、時間衰減、收藏數、照片品質與近期熱度。
-
-- 未完成：Next.js 前台、會員登入、收藏、照片上傳、地區/分類/價位/距離篩選、Typesense 搜尋、Redis 快取、後台審核、檢舉、反作弊、商家認領、SEO 頁面。
-
-- 目前建置驗證：dotnet build FoodTrust.Api\FoodTrust.Api.csproj --no-restore -m:1；dotnet build FoodTrust.Worker\FoodTrust.Worker.csproj --no-restore -m:1。
-
-## 實作狀態更新（2026-05-15）
-
-- 已完成：完成餐廳/評論/排行責任邊界整理，將 Restaurant、Review、Ranking、Import Target 的 service 與 repository 拆分。
-
-- 已完成：導入輕量資料庫 migration 基礎，新增 schema_migrations 與版本化 DatabaseMigrations，後續 schema 變更可用 migration 追蹤。
-
-- 部分完成：餐廳資料欄位已擴充 BranchName、City、District、Latitude、Longitude、OpeningHours、PriceMin、PriceMax、CuisineType、Tags、Description、OfficialUrl、GoogleMapUrl。尚未建立獨立城市/行政區/料理分類資料表。
-
-- 部分完成：餐廳搜尋已支援 keyword、status、city、district、cuisineType、priceMin、priceMax、minScore、page、pageSize。尚未支援距離搜尋、附近餐廳、Typesense typo tolerance。
-
-- 部分完成：餐廳排序已支援 latest、ranking、reviewCount、favoriteCount；排行榜與列表排序已使用 approved / non-suspicious / non-deleted reviews 的 Bayesian 平台分數，並納入收藏數 FavoriteScore 訊號。尚未納入照片品質、近期熱度與使用者權重。
-
-- 部分完成：評論模型已支援 TasteScore、ServiceScore、EnvironmentScore、ValueScore、RevisitScore、Content、VisitDate、PricePerPerson、DiningType、CompanionType、狀態欄位、會員歸屬與 30 天重複評論限制，並已支援匿名評論檢舉。尚未實作評論照片與會員權重。
-
-- 已完成：後台評論審核 API 已支援評論列表查詢、狀態更新、批次狀態更新、可疑標記、刪除標記、審核原因紀錄、操作紀錄查詢、審核紀錄全域搜尋、檢舉列表查詢與檢舉處理，且已加入 Admin role JWT 授權保護。
-
-- 部分完成：自動反作弊 MVP 已支援同評論者短時間大量評論、同餐廳重複內容、低品質內容、與既有餐廳平均分差距過大的規則式偵測；命中後自動標記 is_suspicious、狀態設為 Suspicious，並保存 suspicious_reason 與 suspicious_detected_at。尚未支援 IP/裝置指紋、會員信任分數與批次重算。
-
-- 已完成：會員評論歸屬與 30 天限制已落地，登入會員新增完整評論時會從 User JWT 寫入 restaurant_reviews.user_id，且同會員同餐廳 30 天內不可重複新增有效評論。
-
-- 部分完成：會員系統基礎已支援 users 資料表、一般會員註冊/登入、PBKDF2 密碼雜湊與 User JWT。尚未實作會員資料維護、Refresh Token 與 email 驗證。
-
-- 已完成：後台登入/授權已支援第一位管理員 bootstrap、PBKDF2 密碼雜湊、JWT 登入、Admin Refresh Token 輪替與撤銷、Admin API 授權限制、管理員列表、啟用/停用管理員、目前登入管理員改密碼、角色更新與 ReviewModerator 權限細分，且審核操作可關聯管理員。
-
-- 部分完成：Next.js 前台 FoodTrust.Web 已建立，支援首頁、餐廳列表、餐廳詳細、登入、註冊、我的收藏、收藏操作與新增評論的第一版流程。
-
-仍未完成：照片上傳、地圖/距離搜尋、Typesense、Redis、商家認領、SEO 頁面。
-
-- 本次建置驗證：dotnet build FoodTrust.Api\\FoodTrust.Api.csproj --no-restore -m:1；dotnet build FoodTrust.Worker\\FoodTrust.Worker.csproj --no-restore -m:1。
-
-## 實作狀態更新（2026-05-18）
-
-- 已完成：登入會員新增評論會套用 User role JWT 授權，從 ClaimTypes.NameIdentifier 寫入 restaurant_reviews.user_id。
-
-- 已完成：新增同會員同餐廳 30 天內不可重複新增評論的服務層檢查，避免重複評論進入評分資料。
-
-- 已完成：JWT 驗證設定改為同時接受 AdminJwt 與 UserJwt issuer/audience，避免會員 token 在受保護 API 被拒。
-
-- 已完成：收藏功能基礎已落地，新增 favorite_restaurants 資料表，支援會員收藏/取消收藏餐廳與查詢我的收藏餐廳分頁列表。
-
-- 已完成：後台管理員列表與啟用/停用管理已落地，新增 GET /api/v1/admin/users 與 PATCH /api/v1/admin/users/{id}/active，並避免管理員停用自己。
-
-- 已完成：目前登入管理員改密碼已落地，新增 PATCH /api/v1/admin/users/me/password，會驗證目前密碼、新密碼長度與帳號啟用狀態。
-
-- 已完成：後台評論批次審核已落地，新增 PATCH /api/v1/admin/reviews/status，可一次更新多筆評論狀態並為每筆建立審核紀錄，回傳成功筆數與找不到的評論 ID。
-
-- 已完成：後台審核紀錄搜尋已落地，新增 GET /api/v1/admin/reviews/moderation-logs，支援 reviewId、adminUserId、action、from、to、page、pageSize 篩選。
-
-- 已完成：Admin Refresh Token 已落地，登入會簽發 refresh token，新增 POST /api/v1/admin/auth/refresh 輪替 access/refresh token，以及 POST /api/v1/admin/auth/revoke 撤銷 refresh token。
-
-- 已完成：後台權限細分已落地，新增 ReviewModerator 角色與 Admin.ReviewModeration policy，評論審核/檢舉 API 開放 Admin 或 ReviewModerator 使用，管理員管理仍限 Admin，並新增 PATCH /api/v1/admin/users/{id}/role 更新角色。
-
-- 已完成：排行收藏訊號整合已落地，餐廳列表與排行榜回傳 favoriteCount，列表支援 sortBy=favoriteCount，排行榜分數納入 FavoriteScore 5% 權重。
-
-- 已完成：FoodTrust.Web 前台骨架已建立，使用 TypeScript + Next.js App Router + Tailwind CSS，已完成首頁、餐廳搜尋列表、餐廳詳細、會員登入/註冊、我的收藏、收藏按鈕與評論表單第一版。
-
-- 目前推送進度（2026-05-18）：後台管理補強已完成至權限細分，排行已整合收藏訊號，FoodTrust.Web 前台 MVP 骨架已建立；本版準備推送 main 至 origin/main。
-
-- 已完成：FoodTrust.Web 前端互動改善已落地，新增會員狀態列與登出、餐廳列表分頁控制，並在評論送出成功後刷新餐廳詳細頁資料。
-
-- 已完成：FoodTrust.Web 收藏狀態同步已落地，收藏列表會同步本機會員收藏狀態，餐廳詳情頁收藏按鈕會依狀態初始化並在切換後刷新資料。
-
-- 已完成：FoodTrust.Web API 錯誤處理已補強，前端會解析後端錯誤 payload，登入、註冊、收藏、評論與收藏列表可顯示更精準的失敗訊息。
-
-- 已完成：FoodTrust.Web SEO route 與視覺細節已補強，新增頁面 metadata、餐廳詳情動態 metadata、robots.txt、sitemap.xml、焦點樣式與餐廳外部連結。
-
-- 已完成：FoodTrust.Web 部署設定文件已補強，新增 .env.example、更新 README，記錄 NEXT_PUBLIC_API_BASE_URL、NEXT_PUBLIC_SITE_URL 與建置部署指令。
-
-- 已完成：FoodTrust.Web 前端驗證流程已補強，新增 typecheck 與 verify npm script，並建立 GitHub Actions workflow 自動執行 lint、typecheck、build。
-
-- 已完成：AWS Amplify Hosting 部署準備已補強，新增 monorepo amplify.yml，並於 FoodTrust.Web README 記錄 App root、build artifact、cache 與 NEXT_PUBLIC_API_BASE_URL / NEXT_PUBLIC_SITE_URL 設定。
-
-- 目前 AWS 部署進度（2026-05-18）：AWS 帳號 root MFA 已完成，已建立 IAM Identity Center 使用者 jay-admin 並啟用 MFA，已指派 AdministratorAccess；已建立每月 10 USD 預算警示。Amplify 已連接 GitHub repo sujay06297/FoodTrust main 分支並完成首次前端部署，Amplify 網址為 https://main.d2p8rcvp0wb9cp.amplifyapp.com；目前待確認項目為該網址 DNS/邊緣節點生效狀態，若仍無法開啟，下一步檢查 nslookup、curl -I、Amplify Deploy/Verify log，必要時重新部署此版本。
-
-- 本次建置驗證：dotnet build FoodTrust.Api\FoodTrust.Api.csproj --no-restore -m:1；dotnet build FoodTrust.Worker\FoodTrust.Worker.csproj --no-restore -m:1。
-
-## 開發接續摘要（給新視窗/新對話快速讀取，2026-05-15）
-
-請下一位助理先讀本段，再讀「實作狀態更新」。目前工作目標：依 MVP 優先順序補完 FoodTrust 美食排行網後端，規格書要隨功能同步更新。
-
-## 目前專案位置與技術架構
-
-工作目錄：C:\Users\User\FoodTrust。方案包含 FoodTrust.Api、FoodTrust.Core、FoodTrust.Infrastructure、FoodTrust.Worker。
-
-架構原則：Core 放 domain/application 介面、模型與 service；Infrastructure 放 Dapper/MySQL repository、migration、外部匯入；Api 放 Controllers、request models、JWT 設定；Worker 放背景匯入。Core 的 interface 由 Infrastructure 實作是正常分層。
-
-資料庫使用 MySQL，migration 由 FoodTrust.Infrastructure\Data\DatabaseMigrations.cs 與 DatabaseInitializer 啟動時套用，schema_migrations 記錄版本。
-
-## 目前已完成的後端功能
-
-餐廳：新增、查詢、詳細、更新、狀態更新、FDA 食品業者匯入、來源去重、匯入紀錄查詢。
-
-搜尋/排行：支援 keyword、status、city、district、cuisineType、priceMin、priceMax、minScore、page、pageSize；排序支援 latest、ranking、reviewCount；排行與列表使用 approved/non-suspicious/non-deleted reviews 的 Bayesian 平台分數。
-
-評論：五項分數 Taste/Service/Environment/Value/Revisit、平均分、內容、用餐日期、人均消費、用餐型態、同行型態、狀態、可疑/刪除旗標。
-
-會員/後台：一般會員註冊/登入、User JWT、第一位管理員 bootstrap、PBKDF2 密碼雜湊、Admin JWT、Admin role 授權、評論審核列表、狀態更新、可疑標記、刪除標記、審核原因、操作紀錄查詢。
-
-檢舉與反作弊：公開端匿名評論檢舉、後台檢舉列表、檢舉狀態處理、處理管理員與處理備註；新增完整評論時會執行規則式反作弊，命中後自動標記 Suspicious 並保存可疑原因。
-
-## 近期本機 commits
-
-cc46d92 新增評論檢舉流程；ae72ee9 新增後台評論審核紀錄；74c9e12 新增後台登入與授權基礎；61b185f 新增後台評論審核 API；e779222 新增中文方法註解。這些可能尚未 push，請先用 git status/log 確認。
-
-## 建置與操作注意事項
-
-- 建置請用單執行緒避免 Windows DLL lock：dotnet build FoodTrust.Api\FoodTrust.Api.csproj --no-restore -m:1；dotnet build FoodTrust.Worker\FoodTrust.Worker.csproj --no-restore -m:1。
-
-- Git 不一定在 PATH，常用路徑：C:\Users\User\AppData\Local\Fork\gitInstance\2.50.1\cmd\git.exe。
-
-- PowerShell Get-Content 可能讓 UTF-8 中文顯示成亂碼；不要直接判定檔案壞掉。讀中文可用 rg 或指定 UTF8。
-
-## 下一步建議優先順序
-
-1. 產品功能後續：照片上傳、地圖/距離搜尋、Typesense、Redis、Next.js 前台、SEO 頁面、商家認領。
-
-2. 前端 MVP 後續：已完成，前端改以 Vercel 為部署目標；後端 API 規劃改放 Google Cloud Run，資料庫規劃改用 TiDB Cloud Starter。
-
-3. 產品功能後續：照片上傳、地圖/距離搜尋、Typesense、Redis、Next.js 前台、SEO 頁面、商家認領。
-
-4. 持續優化反作弊：補 IP/裝置指紋、會員信任分數、人工審核回饋與批次重算。
-
-5. 前端 MVP：在後端核心流程穩定後，開始規劃 Next.js 前台餐廳列表、詳細頁、排行與會員互動。
-
-## 實作時同步規則
-
-每完成一個功能 slice，請更新本規格書的實作狀態與本段接續摘要，然後 build Api/Worker，最後 commit。使用者偏好中文註解與中文說明。
-
-## AWS / 前端部署接續狀態更新（2026-05-19）
-
-- 已完成：本機 FoodTrust.Web 前端已成功啟動，網址為 http://127.0.0.1:3000；本機新增 .env.local，設定 NEXT_PUBLIC_API_BASE_URL=http://localhost:5000、NEXT_PUBLIC_SITE_URL=http://localhost:3000。若後端 API 未啟動，首頁、餐廳列表與餐廳詳細頁可能因 API 無回應而載入失敗；登入頁可正常開啟。
-
-- 已完成：為處理 Amplify 預設網域 404，已將 FoodTrust.Web 的 Next.js 從 16.2.6 調整為 Amplify SSR 支援範圍內的 15.5.18，並同步修正 eslint-config-next 與 ESLint flat config。已通過本機 lint、typecheck 與 next build。
-
-- 已完成：已提交並推送 commit 7b0ba43「修正 Amplify 前端部署 404」到 origin/main。Amplify 部署記錄可看到最新 commit 與 Next.js 15.5.18。
-
-- 目前 AWS 狀態：Amplify App ID 為 d2p8rcvp0wb9cp，區域為 ap-southeast-2（亞太地區/雪梨），預設網域為 https://main.d2p8rcvp0wb9cp.amplifyapp.com。CloudFront/HTTP 有回應，但 HTTPS 網頁目前仍顯示 HTTP ERROR 404。
-
-- 目前 AWS 狀態：已在 CloudShell 成功執行 update-app，App platform 已顯示為 WEB_COMPUTE。這代表 Amplify App 已切到 Next.js SSR/Compute 類型。
-
-- 目前阻塞：部署 5 的 build 階段成功，但部署階段失敗，錯誤為「Failed to find the deploy-manifest.json file in the build output」。判斷原因偏向 monorepo 設定未讓 Amplify SSR 正確辨識 FoodTrust.Web 為 App root。
-
-- 下次接續第一步：在 AWS CloudShell 執行 aws amplify update-branch --app-id d2p8rcvp0wb9cp --branch-name main --environment-variables AMPLIFY_MONOREPO_APP_ROOT=FoodTrust.Web --region ap-southeast-2
-
-- 下次接續第二步：接著執行 aws amplify start-job --app-id d2p8rcvp0wb9cp --branch-name main --job-type RELEASE --region ap-southeast-2，等待新部署完成後再測 https://main.d2p8rcvp0wb9cp.amplifyapp.com。
-
-- 若仍失敗：檢查 Amplify「託管 > 環境變數」是否存在 AMPLIFY_MONOREPO_APP_ROOT=FoodTrust.Web；檢查「託管 > 重寫和重新引導」是否建立 SSR rewrite；必要時考慮重新建立 Amplify App 並在建立時明確指定 monorepo App root 為 FoodTrust.Web。
-
-## AWS 資源退場與停止計費清單（2026-06-10）
-
-- 背景：目前前端已不打算繼續放在 AWS。此段用來記錄已知 AWS 資源、帳單檢查結果與退場步驟，避免未使用資源持續產生費用。
-
-- 已知前端部署資源：AWS Amplify Hosting，App 名稱 FoodTrust，App ID d2p8rcvp0wb9cp，區域 ap-southeast-2（亞太地區/雪梨），分支 main，預設網域 https://main.d2p8rcvp0wb9cp.amplifyapp.com。
-
-- 退場主要動作：若不再使用 AWS 前端，應至 AWS Amplify > FoodTrust > 應用程式設定 > 一般設定，執行 Delete app。刪除後 amplifyapp.com 預設網址會失效，Amplify Hosting 建置與託管費用應停止。
-
-- 帳單現況：Billing and Cost Management 顯示本月至今約 0.03 USD，Cost breakdown 曾出現 AWS Amplify、Amazon S3、AWS Secrets Manager、AWS Glue、Tax、Others 等分類。金額很低，但仍需逐項確認是否存在可刪資源。
-
-- 本專案程式碼依賴判斷：目前程式碼與設定檔只確認有 Amplify 前端部署設定（amplify.yml 與 FoodTrust.Web README）。尚未看到 Secrets Manager 或 Glue 的程式碼依賴。S3 僅在原規格書技術架構中作為未來照片物件儲存建議，尚未看到本專案已實作或必須保留的 S3 整合。
-
-- 停止計費檢查清單：1. Amplify：確認 FoodTrust App 已刪除。2. S3：檢查是否有不需要的 bucket；不用時先清空再刪除 bucket。3. Secrets Manager：檢查是否有 secrets；不用時排程刪除，避免按 secret 持續計費。4. AWS Glue：檢查 crawler、job、database、table；未使用時刪除。5. Route 53：若有 hosted zone 或 DNS record 指向前端，確認是否需要保留；Hosted Zone 可能按月計費。6. CloudFront：若有 distribution，先 Disable，完成後 Delete。7. EC2-Other：檢查 EBS volume、snapshot、Elastic IP、Load Balancer，未使用時刪除或釋放。
-
-- 區域檢查：Amplify 已知在 ap-southeast-2，但帳單頁是全球彙總。刪除資源時需切換到實際區域檢查，S3 也需看全帳號 bucket 清單。
-
-- 後續維運規則：每次新增 AWS 服務，都要在本規格書記錄服務名稱、區域、用途、是否必要、刪除方式與可能費用來源。若只是短期測試，測試完成後要在 Billing > Bills / Cost Explorer 確認沒有殘留費用。
-
-- 目前建議：若前端改放其他平台或只保留本機開發，先刪 Amplify App，再檢查 S3、Secrets Manager、Glue 是否有實際資源；確認沒有資源後保留 10 USD 預算警示作為防呆。
-
-## 新雲端部署決策（2026-06-10）
-
-- 部署方向：前端不再放 AWS Amplify，改以低成本、可逐步擴充的 serverless 方案為主。
-
-- 前端部署：`FoodTrust.Web` 規劃部署至 Vercel Hobby。理由是 Next.js 支援完整、部署流程簡單，且前端低流量階段成本較容易控制。
-
-- API 部署：`FoodTrust.Api` 規劃部署至 Google Cloud Run。理由是可用 Docker 部署 ASP.NET Core API、支援 scale to zero、低流量時成本較低，且朋友已有 Cloud Run 部署經驗可參考。
-
-- Worker 部署：`FoodTrust.Worker` 規劃改以 Cloud Run Jobs 或等效排程工作執行。理由是匯入/批次工作不需要長時間常駐，適合用 job 型態降低閒置成本。
-
-- 資料庫部署：資料庫規劃使用 TiDB Cloud Starter。理由是目前專案偏 MySQL 架構，TiDB 提供 MySQL 相容介面，較 Supabase / Neon 這類 PostgreSQL 平台需要的程式改動少，且 Starter 免費額度適合 MVP 階段。
-
-- 暫不採用：Supabase 作為第一階段 DB。Supabase 本身可用，但它是 PostgreSQL，若採用需調整 NuGet driver、connection string、migration SQL、AUTO_INCREMENT、日期/布林型別與 repository 查詢語法。除非後續決定轉 PostgreSQL，否則先不列為首選。
-
-- 暫不採用：Google Cloud SQL / Azure MySQL 作為第一階段 DB。兩者穩定但較容易產生固定費或免費期限到期成本，與目前「便宜優先」目標不完全一致。
-
-- 成本控制規則：Cloud Run API 應設定 min instances = 0、max instances 先設 1、低 CPU/Memory 起步，並建立 GCP budget alert。TiDB Cloud 需設定用量提醒，避免超過免費額度後未察覺。
-
-- 後續實作項目：新增 `FoodTrust.Api` Dockerfile、規劃 `FoodTrust.Worker` job 部署方式、補 Cloud Run / TiDB 部署文件、整理正式環境變數清單，並確認 migration 可在 TiDB Cloud Starter 正常執行。
-
-## TiDB / GCP 接續狀態更新（2026-06-12）
-
-- 已完成：TiDB Cloud Starter 已建立 `FoodTrust-DEV` 實例，FDA 候選資料匯入流程已可寫入 `candidate_restaurants`。
-- 已完成：匯入流程改為「先進候選表、人工審核後再寫入 restaurants」，並新增候選餐廳 API、後台頁面 `/admin/candidate-restaurants`、Approve / Reject 流程與 Google Search 按鈕。
-- 已完成：`FoodTrust.Worker` 已補 `launchSettings.json`、`appsettings*.json` 複製規則、TiDB CA / TLS / BootstrapDatabase 設定欄位，且已加回 solution。
-- 已完成：`FoodTrust.Web` API client 已改為必須明確設定 `NEXT_PUBLIC_API_BASE_URL`，不再 fallback 到本機 `localhost:5000`。
-- 已完成：新增 `FoodTrust.Api/Dockerfile`、`.dockerignore`、`.gcloudignore`、`cloudbuild.api.yaml`，可使用 Cloud Build 建置 API image。
-- 已完成：GCP 專案 `foodtrust-dev`、Artifact Registry `foodtrust`、必要 API（Cloud Run Admin、Artifact Registry、Secret Manager、Cloud Scheduler、Cloud Build）均已建立或啟用。
-- 已完成：Cloud Build 已成功將 API image 推送到 `asia-east1-docker.pkg.dev/foodtrust-dev/foodtrust/foodtrust-api:dev`。
-- 已完成：API 已補 CORS policy，預設允許 `http://localhost:3000` 與 `http://127.0.0.1:3000`。
-- 目前阻塞：Cloud Run `foodtrust-api` 首次 deploy 失敗，錯誤表面為容器未在 `PORT=8080` 上啟動；高機率根因是啟動時先執行 `DatabaseInitializer.InitializeAsync()`，但 Cloud Run 尚未提供正確的 TiDB connection string / JWT / CORS 正式設定，導致容器在 listen 前 crash。
-- 下次接續第一步：用最新版 image（含 CORS）再執行一次 `gcloud builds submit --config cloudbuild.api.yaml .`，確保 tag `foodtrust-api:dev` 為最新版本。
-- 下次接續第二步：建立 Secret Manager secrets，至少包含 TiDB connection string、AdminJwt signing key、UserJwt signing key。
-- 下次接續第三步：用 `gcloud run deploy ... --set-secrets ...` 重新部署 `foodtrust-api`，確認 Cloud Run URL 可對外提供 API。
-- 下次接續第四步：把 `FoodTrust.Web/.env.local` 的 `NEXT_PUBLIC_API_BASE_URL` 改成 Cloud Run DEV URL，驗證本機前端直接打 DEV API。
-- 下次接續第五步：評估 `FoodTrust.Worker` 改為 Cloud Run Jobs + Cloud Scheduler，取代目前長駐 worker。
-
-## 架構調整紀錄（2026-07-21）
-
-本次調整目標：將專案明確整理為 RESTful API + Clean Architecture + DDD 實作。
-
-### RESTful API 調整
-
-- 使用者註冊由 `POST /api/v1/auth/register` 調整為 `POST /api/v1/users`。
-- 使用者登入由 `POST /api/v1/auth/login` 調整為 `POST /api/v1/sessions`。
-- 管理員登入由 `POST /api/v1/admin/auth/login` 調整為 `POST /api/v1/admin/sessions`。
-- 管理員 refresh token 交換調整為 `POST /api/v1/admin/refresh-tokens/exchanges`。
-- 管理員 refresh token 撤銷調整為 `DELETE /api/v1/admin/refresh-tokens`。
-- 餐廳收藏由單數動作路由 `/favorite` 調整為集合資源 `/favorites`。
-- 候選餐廳 approve/reject 動作路由調整為 `PATCH /api/v1/admin/candidate-restaurants/{id}/status`。
-- 前端 `FoodTrust.Web/src/lib/api/*` 已同步更新上述 API endpoint。
-
-### Clean Architecture 調整
-
-- `FoodTrust.Core` 保持為內層，集中 domain model、value object、interface 與 application service。
-- `FoodTrust.Infrastructure` 保持為外層，實作 Dapper/MySQL repository、migration、外部匯入來源與安全雜湊。
-- `FoodTrust.Api` 保持為 delivery/composition root，處理 controller、request model、JWT、DI 組裝。
-- `FoodTrust.Api` 已明確加入 `FoodTrust.Core` 專案參考，讓 composition root 對內層依賴清楚化。
-- `FoodTrust.Worker` 繼續透過 Core/Infrastructure 執行背景匯入流程。
-
-### DDD 調整
-
-- 新增 `FoodTrust.Core/Common/Domain`：`EntityId`、`PageRequest`、`OptionalText`。
-- 新增 `FoodTrust.Core/Users/Domain/ValueObjects`：`UserEmail`、`DisplayName`、`AccountPassword`。
-- 新增 `FoodTrust.Core/Admin/Domain/ValueObjects`：`AdminUsername`、`AdminDisplayName`、`AdminRoleName`。
-- 新增 `FoodTrust.Core/Restaurants/Domain`：`Restaurant` aggregate、`RestaurantReview`、`FavoriteRestaurant`。
-- 新增 `FoodTrust.Core/Restaurants/Domain/ValueObjects`：`RestaurantName`、`RestaurantAddress`、`PriceRange`、`RestaurantLifecycleStatus`、`ReviewScore`、`ReviewContent`、`PricePerPerson`、`RestaurantReviewStatusName`、`ReviewReportReason`、`ReviewReportStatusName`、`ModerationActionName`。
-- 新增 `FoodTrust.Core/RestaurantImports/Domain`：`ImportBatchSize`、`CandidateRestaurantLifecycleStatus`。
-- `UserAuthService`、`AdminAuthService`、`AdminUserService`、`RestaurantService`、`RestaurantReviewService`、`RestaurantFavoriteService`、`CandidateRestaurantService`、`RestaurantImportService` 已改為透過 domain/value object 執行業務規則驗證與流程協調。
-- 業務規則已從 controller/repository/service 的 primitive validation 逐步收斂到 domain model/value object，例如 Email 格式、密碼長度、餐廳名稱與地址、價格區間、評論分數、評論內容長度、檢舉原因、管理員角色、收藏識別碼、匯入批次大小。
-
-### 驗證結果
-
-- `dotnet build FoodTrust.Api\FoodTrust.Api.csproj`：通過。
-- `dotnet build FoodTrust.Worker\FoodTrust.Worker.csproj`：通過。
-- `npm run build`（FoodTrust.Web）：通過。
-- 注意：API build 仍有既有套件警告 `Microsoft.OpenApi 2.3.0` high severity vulnerability，後續建議升級 Swashbuckle/OpenAPI 相關套件。
+目前實作進度、部署阻塞與下一步待辦不再寫在本檔案，請見 [docs/handoff.md](docs/handoff.md)（現況快照）、[docs/devlog.md](docs/devlog.md)（歷史演進紀錄）與 [docs/adr/](docs/adr/)（重要架構決策）。AWS 資源整理/退場清單見 [docs/ops/aws-teardown.md](docs/ops/aws-teardown.md)。文件總覽見 [docs/README.md](docs/README.md)。
