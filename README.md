@@ -10,7 +10,7 @@
 | API | ASP.NET Core Web API（Clean Architecture） | Google Cloud Run |
 | 背景工作 | .NET Worker（資料匯入） | 規劃改 Cloud Run Jobs |
 | 資料庫 | MySQL 相容 | TiDB Cloud Starter |
-
+ttt
 架構決策脈絡見 [docs/adr/](docs/adr/)。
 
 ## 專案結構
