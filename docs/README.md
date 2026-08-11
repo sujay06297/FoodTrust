@@ -22,3 +22,4 @@ ppp
 - 這是「現在的狀態」還是「發生過的事件」？前者進 [handoff.md](handoff.md)，後者進 [devlog.md](devlog.md)。
 - 這是需要說明「為什麼選這個方案」的決策嗎？是的話拆一份 ADR，不要只塞在 devlog 裡。
 - 這是操作型清單（步驟、指令、檢查表）嗎？放 [ops/](ops/)。
+ooo
